@@ -52,7 +52,10 @@ class StylingRequest(BaseModel):
 
     location: str | None = Field(
         default=None,
-        description="Country or city where products should be available"
+        description=(
+            "Shopping or delivery city, not merely "
+            "a country; for example Москва"
+        ),
     )
 
     item_types: list[str] = Field(
@@ -130,19 +133,20 @@ class ProductSearch(BaseModel):
 
     query: str
 
+    fallback_query: str = Field(
+        description=(
+            "A broader shopping query containing "
+            "only the product type and, optionally, "
+            "its main color"
+        )
+    )
+
     desired_attributes: list[str] = Field(
         default_factory=list
     )
 
     max_price: int | None = None
-
-    required: bool = Field(
-        default=True,
-        description=(
-            "Whether the outfit is incomplete "
-            "without this category"
-        ),
-    )
+    required: bool = True
 
 
 class SearchPlan(BaseModel):
@@ -157,7 +161,7 @@ class Product(BaseModel):
     title: str
     category: str
 
-    price: int
+    price: float
     currency: str
 
     attributes: list[str] = Field(
@@ -166,7 +170,14 @@ class Product(BaseModel):
 
     source: str
     url: str | None = None
+    image_url: str | None = None
 
+    rating: float | None = None
+    reviews: int | None = None
+    snippet: str | None = None
+
+    position: int | None = None
+    
 class OutfitCritique(BaseModel):
     outfit_id: str
 
@@ -191,3 +202,15 @@ class OutfitCritique(BaseModel):
 
 class OutfitCritiqueBatch(BaseModel):
     critiques: list[OutfitCritique]
+    
+
+class ProductAttributes(BaseModel):
+    product_id: str
+
+    attributes: list[str] = Field(
+        default_factory=list
+    )
+
+
+class ProductAttributeBatch(BaseModel):
+    products: list[ProductAttributes]

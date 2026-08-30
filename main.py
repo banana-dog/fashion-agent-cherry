@@ -12,7 +12,11 @@ def main():
         "thread_id": thread_id
     }
     }
-
+    context = Context(
+        user_id="demo-user",
+        locale="ru-RU",
+        currency="RUB",
+    )
     print("🍒 Cherry Pick")
     print("Расскажи, какой образ тебе нужен.\n")
 
@@ -46,7 +50,7 @@ def main():
                 ]
             }, # type: ignore
             config=config, # type: ignore
-            context=Context(user_id=thread_id) # type: ignore
+            context=context # type: ignore
         )
 
         last_message = result["messages"][-1]

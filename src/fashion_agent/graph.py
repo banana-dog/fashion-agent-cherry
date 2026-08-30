@@ -9,6 +9,7 @@ from src.fashion_agent.styleDNA import (
 )
 from fashion_agent.product_search import(
     create_search_plan,
+    enrich_product_attributes,
     execute_searches,
     rank_products
 )
@@ -26,7 +27,15 @@ from langgraph.graph import (
     END,
 )
 from langgraph.store.memory import InMemoryStore
+import hashlib
+import os
 
+import httpx
+
+from dotenv import load_dotenv
+
+
+load_dotenv()
 
 store = InMemoryStore()
 checkpointer = InMemorySaver()
@@ -83,6 +92,11 @@ builder.add_node(
     "present_outfits",
     present_outfits,
 )
+
+builder.add_node(
+    "enrich_product_attributes",
+    enrich_product_attributes,
+)
 #########EDGES##############
 
 builder.add_edge(
@@ -117,6 +131,11 @@ builder.add_edge(
 
 builder.add_edge(
     "execute_searches",
+    "enrich_product_attributes",
+)
+
+builder.add_edge(
+    "enrich_product_attributes",
     "rank_products",
 )
 

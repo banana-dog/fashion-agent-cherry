@@ -408,9 +408,25 @@ def present_outfits(
         for item in outfit["items"]:
             lines.append(
                 f"• {item['title']} — "
-                f"{item['price']} "
+                f"{item['price']:.0f} "
                 f"{item['currency']}"
             )
+
+            lines.append(
+                f"  Магазин: "
+                f"{item['source']}"
+            )
+
+            if item.get("url"):
+                lines.append(
+                    f"  {item['url']}"
+                )
+
+            if item.get("image_url"):
+                lines.append(
+                    f"  Фото: "
+                    f"{item['image_url']}"
+                )
 
         lines.append(
             f"Почему работает: "
