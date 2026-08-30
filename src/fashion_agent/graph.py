@@ -1,18 +1,22 @@
 from fashion_agent.basic_requests import (
     ask_questions, 
-    extract_request, 
-    ready,
-    route_after_extraction
+    extract_request,
+    route_after_extraction 
 )
 from src.fashion_agent.styleDNA import (
     update_style_memory,
     load_style_memory
 )
-from src.fashion_agent.search_planner import(
+from fashion_agent.product_search import(
     create_search_plan,
     execute_searches,
-    rank_products,
-    present_candidates
+    rank_products
+)
+from src.fashion_agent.outfit_builder import (
+    route_after_build, 
+    build_outfits, 
+    critique_outfits, 
+    present_outfits
 )
 from fashion_agent.states import FashionState
 from langgraph.checkpoint.memory import InMemorySaver
@@ -61,13 +65,23 @@ builder.add_node(
 )
 
 builder.add_node(
-    "present_candidates",
-    present_candidates,
+    "rank_products",
+    rank_products,
 )
 
 builder.add_node(
-    "rank_products",
-    rank_products,
+    "build_outfits",
+    build_outfits,
+)
+
+builder.add_node(
+    "critique_outfits",
+    critique_outfits,
+)
+
+builder.add_node(
+    "present_outfits",
+    present_outfits,
 )
 #########EDGES##############
 
@@ -82,7 +96,7 @@ builder.add_edge(
 )
 
 builder.add_edge(
-    "update_style_memory",
+    "load_style_memory",
     "extract_request"
 )
 
@@ -108,11 +122,21 @@ builder.add_edge(
 
 builder.add_edge(
     "rank_products",
-    "present_candidates",
+    "build_outfits",
+)
+
+builder.add_conditional_edges(
+    "build_outfits",
+    route_after_build,
 )
 
 builder.add_edge(
-    "present_candidates",
+    "critique_outfits",
+    "present_outfits",
+)
+
+builder.add_edge(
+    "present_outfits",
     END,
 )
 

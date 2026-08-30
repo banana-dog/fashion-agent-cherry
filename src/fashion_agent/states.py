@@ -23,6 +23,8 @@ class FashionState(TypedDict):
     search_plan: list[dict]
     products: list[dict]
     ranked_products: list[dict]
+
+    outfits: list[dict]
     
 
 class StylingRequest(BaseModel):
@@ -126,21 +128,21 @@ class ProductSearch(BaseModel):
         "accessory",
     ]
 
-    query: str = Field(
-        description=(
-            "Short English product search query"
-        )
-    )
+    query: str
 
     desired_attributes: list[str] = Field(
-        default_factory=list,
-        description=(
-            "Normalized attributes in category:target format, "
-            "for example color:black or style:gothic"
-        ),
+        default_factory=list
     )
 
     max_price: int | None = None
+
+    required: bool = Field(
+        default=True,
+        description=(
+            "Whether the outfit is incomplete "
+            "without this category"
+        ),
+    )
 
 
 class SearchPlan(BaseModel):
@@ -164,3 +166,28 @@ class Product(BaseModel):
 
     source: str
     url: str | None = None
+
+class OutfitCritique(BaseModel):
+    outfit_id: str
+
+    approved: bool
+
+    occasion_score: float = Field(
+        ge=0,
+        le=10,
+    )
+
+    cohesion_score: float = Field(
+        ge=0,
+        le=10,
+    )
+
+    explanation: str
+
+    issues: list[str] = Field(
+        default_factory=list
+    )
+
+
+class OutfitCritiqueBatch(BaseModel):
+    critiques: list[OutfitCritique]

@@ -6,6 +6,7 @@ from langchain_core.messages import SystemMessage, AIMessage
 from src.fashion_agent.tools import catalog_search
 from src.fashion_agent.styleDNA import preference_score
 
+
 search_plan_extractor = llm.with_structured_output(
     SearchPlan
 )
@@ -60,6 +61,15 @@ Do not put disliked attributes into desired_attributes.
 
 If the user has a total budget, distribute it sensibly
 between product categories.
+
+Mark core outfit categories as required=true.
+
+Examples:
+- dress and shoes are usually required;
+- top, bottom and shoes are usually required;
+- bag, accessory and outerwear may be optional.
+
+Do not create more than one search for the same category.
 """
     )
 
