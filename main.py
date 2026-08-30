@@ -3,7 +3,7 @@ import uuid
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage
 from src.fashion_agent.graph import graph
-from src.fashion_agent.nodes import Context
+from src.fashion_agent.styleDNA import Context
 
 def main():
     thread_id = str(uuid.uuid4())
@@ -46,7 +46,7 @@ def main():
                 ]
             }, # type: ignore
             config=config, # type: ignore
-            context=Context(user_id=thread_id)
+            context=Context(user_id=thread_id) # type: ignore
         )
 
         last_message = result["messages"][-1]

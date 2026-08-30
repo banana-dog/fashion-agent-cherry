@@ -11,11 +11,18 @@ from pydantic import BaseModel, Field
 
 
 class FashionState(TypedDict):
-    messages: Annotated[list[AnyMessage], add_messages]
+    messages: Annotated[
+        list[AnyMessage],
+        add_messages,
+    ]
 
     request: dict | None
     missing_fields: list[str]
     style_preferences: list[dict]
+
+    search_plan: list[dict]
+    products: list[dict]
+    ranked_products: list[dict]
     
 
 class StylingRequest(BaseModel):
@@ -107,3 +114,53 @@ class PreferenceExtraction(BaseModel):
     preferences: list[StylePreference] = Field(
         default_factory=list
     )
+    
+class ProductSearch(BaseModel):
+    category: Literal[
+        "dress",
+        "top",
+        "bottom",
+        "shoes",
+        "outerwear",
+        "bag",
+        "accessory",
+    ]
+
+    query: str = Field(
+        description=(
+            "Short English product search query"
+        )
+    )
+
+    desired_attributes: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Normalized attributes in category:target format, "
+            "for example color:black or style:gothic"
+        ),
+    )
+
+    max_price: int | None = None
+
+
+class SearchPlan(BaseModel):
+    searches: list[ProductSearch] = Field(
+        min_length=1,
+        max_length=6,
+    )
+
+
+class Product(BaseModel):
+    id: str
+    title: str
+    category: str
+
+    price: int
+    currency: str
+
+    attributes: list[str] = Field(
+        default_factory=list
+    )
+
+    source: str
+    url: str | None = None

@@ -1,35 +1,14 @@
-import os
+
 import json
 from typing import Literal
-from dotenv import load_dotenv
-from langchain_deepseek import ChatDeepSeek
-from src.fashion_agent.states import FashionState, StylingRequest, PreferenceExtraction
+from src.fashion_agent.llm import llm
+from src.fashion_agent.states import FashionState, StylingRequest
 from langchain_core.messages import (
     AIMessage,
-    HumanMessage,
     SystemMessage,
 )
-from langgraph.runtime import Runtime
-from dataclasses import dataclass
-
-@dataclass
-class Context:
-    user_id: str
-    locale: str = "ru-RU"
-    currency: str = "RUB"
     
-load_dotenv()
 
-llm = ChatDeepSeek(
-    model=os.getenv("MODEL", "deepseek-v4-flash"),
-    api_key=os.getenv("API_KEY"), # type: ignore
-    temperature=0,
-    extra_body={
-        "thinking": {
-            "type": "disabled"
-        }
-    },
-)
 
 QUESTION_MAP = {
     "occasion":
@@ -46,10 +25,6 @@ QUESTION_MAP = {
 request_extractor = llm.with_structured_output(
     StylingRequest,
     method="function_calling",
-)
-
-preference_extractor = llm.with_structured_output(
-    PreferenceExtraction
 )
 
 def extract_request(state: FashionState):
@@ -91,12 +66,14 @@ Rules:
     
 def route_after_extraction(
     state: FashionState,
-) -> Literal["ask_questions", "ready"]:
-
+) -> Literal[
+    "ask_questions",
+    "create_search_plan",
+]:
     if state["missing_fields"]:
         return "ask_questions"
 
-    return "ready"
+    return "create_search_plan"
 
 def ask_questions(state: FashionState):
     missing = state["missing_fields"][:2]
@@ -174,88 +151,3 @@ def ready(state: FashionState):
         ]
     }
     
-def update_style_memory(
-    state: FashionState,
-    runtime: Runtime[Context],
-):
-    last_message = state["messages"][-1]
-
-    if not isinstance(last_message, HumanMessage):
-        return {}
-
-    prompt = SystemMessage(
-        content="""
-You extract LONG-TERM fashion preferences from a user's message.
-
-Store only stable preferences that are useful in future conversations.
-
-Examples worth storing:
-- "I hate skinny jeans"
-- "I usually wear oversized clothes"
-- "I love black and cream"
-- "I never wear large logos"
-
-Do NOT store temporary requirements:
-- "I want a black dress for tomorrow"
-- "My budget today is 20000"
-- "I need shoes for a wedding"
-- "Find me a warm jacket"
-
-Do not infer preferences unless the user clearly expresses them.
-
-Normalize target names to concise lowercase English snake_case.
-
-If there are no stable preferences, return an empty list.
-"""
-    )
-
-    result = preference_extractor.invoke(
-        [
-            prompt,
-            HumanMessage(content=last_message.content),
-        ]
-    )
-
-    namespace = (
-        "users",
-        runtime.context.user_id,
-        "style_preferences",
-    )
-
-    for preference in result.preferences:
-        key = (
-            f"{preference.category}:"
-            f"{preference.target}"
-        )
-
-        runtime.store.put(
-            namespace,
-            key,
-            preference.model_dump(),
-        )
-
-    return {}
-
-def load_style_memory(
-    state: FashionState,
-    runtime: Runtime[Context],
-):
-    namespace = (
-        "users",
-        runtime.context.user_id,
-        "style_preferences",
-    )
-
-    memories = runtime.store.search(
-        namespace,
-        limit=100,
-    )
-
-    preferences = [
-        memory.value
-        for memory in memories
-    ]
-
-    return {
-        "style_preferences": preferences
-    }

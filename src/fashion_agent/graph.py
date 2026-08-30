@@ -1,10 +1,18 @@
-from fashion_agent.nodes import (
+from fashion_agent.basic_requests import (
     ask_questions, 
     extract_request, 
     ready,
-    route_after_extraction,
+    route_after_extraction
+)
+from src.fashion_agent.styleDNA import (
     update_style_memory,
     load_style_memory
+)
+from src.fashion_agent.search_planner import(
+    create_search_plan,
+    execute_searches,
+    rank_products,
+    present_candidates
 )
 from fashion_agent.states import FashionState
 from langgraph.checkpoint.memory import InMemorySaver
@@ -20,6 +28,8 @@ store = InMemoryStore()
 checkpointer = InMemorySaver()
 builder = StateGraph(FashionState)
 
+############NODES##############
+
 builder.add_node(
     "extract_request",
     extract_request
@@ -31,19 +41,35 @@ builder.add_node(
 )
 
 builder.add_node(
-    "ready",
-    ready
-)
-
-builder.add_node(
     "load_style_memory",
-    load_style_memory
+    load_style_memory  # type: ignore
 )
 
 builder.add_node(
     "update_style_memory",
-    update_style_memory
+    update_style_memory # type: ignore
 )
+
+builder.add_node(
+    "create_search_plan",
+    create_search_plan,
+)
+
+builder.add_node(
+    "execute_searches",
+    execute_searches,
+)
+
+builder.add_node(
+    "present_candidates",
+    present_candidates,
+)
+
+builder.add_node(
+    "rank_products",
+    rank_products,
+)
+#########EDGES##############
 
 builder.add_edge(
     START,
@@ -71,8 +97,23 @@ builder.add_edge(
 )
 
 builder.add_edge(
-    "ready",
-    END
+    "create_search_plan",
+    "execute_searches",
+)
+
+builder.add_edge(
+    "execute_searches",
+    "rank_products",
+)
+
+builder.add_edge(
+    "rank_products",
+    "present_candidates",
+)
+
+builder.add_edge(
+    "present_candidates",
+    END,
 )
 
 graph = builder.compile(
