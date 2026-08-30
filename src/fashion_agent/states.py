@@ -15,6 +15,7 @@ class FashionState(TypedDict):
 
     request: dict | None
     missing_fields: list[str]
+    style_preferences: list[dict]
     
 
 class StylingRequest(BaseModel):
@@ -61,4 +62,48 @@ class StylingRequest(BaseModel):
     must_use: list[str] = Field(
         default_factory=list,
         description="Existing items that should be used"
+    )
+    
+class StylePreference(BaseModel):
+    category: Literal[
+        "color",
+        "silhouette",
+        "fit",
+        "material",
+        "pattern",
+        "detail",
+        "item",
+        "brand",
+        "style",
+        "other",
+    ]
+
+    target: str = Field(
+        description=(
+            "Canonical normalized preference target "
+            "in lowercase snake_case English"
+        )
+    )
+
+    polarity: Literal[
+        "like",
+        "dislike",
+        "neutral",
+    ]
+
+    strength: Literal[
+        "weak",
+        "medium",
+        "strong",
+    ] = "medium"
+
+    confidence: float = Field(
+        ge=0,
+        le=1,
+    )
+
+
+class PreferenceExtraction(BaseModel):
+    preferences: list[StylePreference] = Field(
+        default_factory=list
     )

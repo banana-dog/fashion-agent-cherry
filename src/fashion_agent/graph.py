@@ -1,4 +1,11 @@
-from fashion_agent.nodes import ask_questions, extract_request, ready, route_after_extraction
+from fashion_agent.nodes import (
+    ask_questions, 
+    extract_request, 
+    ready,
+    route_after_extraction,
+    update_style_memory,
+    load_style_memory
+)
 from fashion_agent.states import FashionState
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import (
@@ -6,7 +13,10 @@ from langgraph.graph import (
     START,
     END,
 )
+from langgraph.store.memory import InMemoryStore
 
+
+store = InMemoryStore()
 checkpointer = InMemorySaver()
 builder = StateGraph(FashionState)
 
@@ -25,8 +35,28 @@ builder.add_node(
     ready
 )
 
+builder.add_node(
+    "load_style_memory",
+    load_style_memory
+)
+
+builder.add_node(
+    "update_style_memory",
+    update_style_memory
+)
+
 builder.add_edge(
     START,
+    "update_style_memory"
+)
+
+builder.add_edge(
+    "update_style_memory",
+    "load_style_memory"
+)
+
+builder.add_edge(
+    "update_style_memory",
     "extract_request"
 )
 
@@ -46,5 +76,6 @@ builder.add_edge(
 )
 
 graph = builder.compile(
-    checkpointer=checkpointer
+    checkpointer=checkpointer,
+    store=store,
 )
