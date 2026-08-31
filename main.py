@@ -1,16 +1,19 @@
+import argparse
 import uuid
 
-from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage
+
 from src.fashion_agent.graph import graph
 from src.fashion_agent.styleDNA import Context
+from src.fashion_agent.web import run_web_server
 
-def main():
+
+def run_cli():
     thread_id = str(uuid.uuid4())
     config = {
-    "configurable": {
-        "thread_id": thread_id
-    }
+        "configurable": {
+            "thread_id": thread_id
+        }
     }
     context = Context(
         user_id="demo-user",
@@ -58,6 +61,38 @@ def main():
         print()
         print("cherry >", last_message.content)
         print()
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "mode",
+        nargs="?",
+        choices=[
+            "cli",
+            "web",
+        ],
+        default="cli",
+    )
+    parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+    )
+    args = parser.parse_args()
+
+    if args.mode == "web":
+        run_web_server(
+            host=args.host,
+            port=args.port,
+        )
+        return
+
+    run_cli()
 
 
 if __name__ == "__main__":
