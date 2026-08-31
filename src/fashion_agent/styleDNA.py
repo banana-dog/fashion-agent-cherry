@@ -1,15 +1,13 @@
-from fashion_agent.states import FashionState, PreferenceExtraction
 from langchain_core.messages import (
     HumanMessage,
     SystemMessage,
 )
 from langgraph.runtime import Runtime
-from src.fashion_agent.llm import llm, Context
 
+from fashion_agent.states import FashionState, PreferenceExtraction
+from src.fashion_agent.llm import Context, llm
 
-preference_extractor = llm.with_structured_output(
-    PreferenceExtraction
-)
+preference_extractor = llm.with_structured_output(PreferenceExtraction)
 
 
 def update_style_memory(
@@ -60,19 +58,17 @@ If there are no stable preferences, return an empty list.
         "style_preferences",
     )
 
-    for preference in result.preferences: # type: ignore
-        key = (
-            f"{preference.category}:"
-            f"{preference.target}"
-        )
+    for preference in result.preferences:  # type: ignore
+        key = f"{preference.category}:{preference.target}"
 
-        runtime.store.put( # type: ignore
+        runtime.store.put(  # type: ignore
             namespace,
             key,
             preference.model_dump(),
         )
 
     return {}
+
 
 def load_style_memory(
     state: FashionState,
@@ -84,20 +80,16 @@ def load_style_memory(
         "style_preferences",
     )
 
-    memories = runtime.store.search( # type: ignore
+    memories = runtime.store.search(  # type: ignore
         namespace,
         limit=100,
     )
 
-    preferences = [
-        memory.value
-        for memory in memories
-    ]
+    preferences = [memory.value for memory in memories]
 
-    return {
-        "style_preferences": preferences
-    }
-    
+    return {"style_preferences": preferences}
+
+
 STRENGTH = {
     "weak": 0.35,
     "medium": 0.7,
@@ -114,14 +106,30 @@ def preference_score(
         "dislike": -1,
     }[preference["polarity"]]
 
-    strength = STRENGTH[
-        preference["strength"]
-    ]
+    strength = STRENGTH[preference["strength"]]
 
     confidence = preference["confidence"]
 
-    return (
-        polarity
-        * strength
-        * confidence
-    )
+    return polarity * strength * confidence
+
+
+def product_hard_conflicts(
+    product: dict,
+    preferences: list[dict],
+) -> list[str]:
+    product_attributes = set(product.get("attributes", []))
+
+    hard_conflicts = []
+
+    for preference in preferences:
+        preference_key = f"{preference['category']}:{preference['target']}"
+
+        if preference_key not in product_attributes:
+            continue
+
+        score = preference_score(preference)
+
+        if score <= -0.7:
+            hard_conflicts.append(preference_key)
+
+    return hard_conflicts

@@ -2,7 +2,7 @@ import hashlib
 import os
 import httpx
 from langchain.tools import tool
-from fashion_agent.states import Product
+from src.fashion_agent.product_search.models import Product
 
 def detect_currency(
     price_text: str,
@@ -93,7 +93,7 @@ def catalog_search(
         params["location"] = location
 
     if max_price is not None:
-        params["max_price"] = max_price
+        params["max_price"] = max_price # type: ignore
 
     params.pop("location", None)
 

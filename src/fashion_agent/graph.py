@@ -7,13 +7,16 @@ from src.fashion_agent.styleDNA import (
     update_style_memory,
     load_style_memory
 )
-from fashion_agent.product_search import(
+from fashion_agent.product_search.product_search import(
     create_search_plan,
+    dispatch_product_searches,
+    search_one_category,
+)
+from fashion_agent.product_search.products_processing import(
     enrich_product_attributes,
-    execute_searches,
     rank_products
 )
-from src.fashion_agent.outfit_builder import (
+from fashion_agent.outfit_builder import (
     route_after_build, 
     build_outfits, 
     critique_outfits, 
@@ -27,11 +30,6 @@ from langgraph.graph import (
     END,
 )
 from langgraph.store.memory import InMemoryStore
-import hashlib
-import os
-
-import httpx
-
 from dotenv import load_dotenv
 
 
@@ -65,12 +63,12 @@ builder.add_node(
 
 builder.add_node(
     "create_search_plan",
-    create_search_plan,
+    create_search_plan, # type: ignore
 )
 
 builder.add_node(
-    "execute_searches",
-    execute_searches,
+    "search_one_category",
+    search_one_category, # type: ignore
 )
 
 builder.add_node(
@@ -124,13 +122,16 @@ builder.add_edge(
     END
 )
 
-builder.add_edge(
+builder.add_conditional_edges(
     "create_search_plan",
-    "execute_searches",
+    dispatch_product_searches,
+    [
+        "search_one_category",
+    ],
 )
 
 builder.add_edge(
-    "execute_searches",
+    "search_one_category",
     "enrich_product_attributes",
 )
 

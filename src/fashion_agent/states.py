@@ -1,13 +1,32 @@
-
-from langchain_core.messages import (
-    AnyMessage,
-    AIMessage,
-    HumanMessage,
-    SystemMessage,
-)
 from typing import Annotated, Literal, TypedDict
+
+from langchain_core.messages import AnyMessage
 from langgraph.graph import add_messages
 from pydantic import BaseModel, Field
+
+from src.fashion_agent.product_search.merge_products import merge_products
+
+
+class MissingCategoryDiagnostics(TypedDict):
+    category: str
+    raw_found: int
+    after_ranking: int
+    conflicts: dict[str, int]
+
+
+class AssemblyDiagnostics(TypedDict):
+    budget_max: int | float | None
+    currency: str | None
+    required_categories: list[str]
+    optional_categories: list[str]
+    desired_attributes: list[str]
+    hard_dislikes: list[str]
+    category_limits: dict[str, int | float | None]
+    missing_categories: list[MissingCategoryDiagnostics]
+    cheapest_required_total: int | float | None
+    budget_shortfall: int | float | None
+    failure_type: str | None
+    relaxations: list[str]
 
 
 class FashionState(TypedDict):
@@ -19,63 +38,48 @@ class FashionState(TypedDict):
     request: dict | None
     missing_fields: list[str]
     style_preferences: list[dict]
-
     search_plan: list[dict]
-    products: list[dict]
+    products: Annotated[
+        list[dict],
+        merge_products,
+    ]
     ranked_products: list[dict]
-
     outfits: list[dict]
-    
+    assembly_diagnostics: AssemblyDiagnostics | None
+
 
 class StylingRequest(BaseModel):
-    task: Literal[
-        "build_outfit",
-        "find_item",
-        "style_item",
-        "unknown"
-    ] = "unknown"
+    task: Literal["build_outfit", "find_item", "style_item", "unknown"] = "unknown"
 
     occasion: str | None = Field(
-        default=None,
-        description="Occasion or context for the outfit"
+        default=None, description="Occasion or context for the outfit"
     )
 
-    budget_max: int | None = Field(
-        default=None,
-        description="Maximum total budget"
-    )
+    budget_max: int | None = Field(default=None, description="Maximum total budget")
 
-    currency: str | None = Field(
-        default=None,
-        description="Budget currency"
-    )
+    currency: str | None = Field(default=None, description="Budget currency")
 
     location: str | None = Field(
         default=None,
         description=(
-            "Shopping or delivery city, not merely "
-            "a country; for example Москва"
+            "Shopping or delivery city, not merely a country; for example Москва"
         ),
     )
 
-    item_types: list[str] = Field(
-        default_factory=list
-    )
+    item_types: list[str] = Field(default_factory=list)
 
     vibe: list[str] = Field(
         default_factory=list,
-        description="Desired style: feminine, minimalistic, edgy, etc."
+        description="Desired style: feminine, minimalistic, edgy, etc.",
     )
 
-    dislikes: list[str] = Field(
-        default_factory=list
-    )
+    dislikes: list[str] = Field(default_factory=list)
 
     must_use: list[str] = Field(
-        default_factory=list,
-        description="Existing items that should be used"
+        default_factory=list, description="Existing items that should be used"
     )
-    
+
+
 class StylePreference(BaseModel):
     category: Literal[
         "color",
@@ -92,8 +96,7 @@ class StylePreference(BaseModel):
 
     target: str = Field(
         description=(
-            "Canonical normalized preference target "
-            "in lowercase snake_case English"
+            "Canonical normalized preference target in lowercase snake_case English"
         )
     )
 
@@ -116,68 +119,9 @@ class StylePreference(BaseModel):
 
 
 class PreferenceExtraction(BaseModel):
-    preferences: list[StylePreference] = Field(
-        default_factory=list
-    )
-    
-class ProductSearch(BaseModel):
-    category: Literal[
-        "dress",
-        "top",
-        "bottom",
-        "shoes",
-        "outerwear",
-        "bag",
-        "accessory",
-    ]
-
-    query: str
-
-    fallback_query: str = Field(
-        description=(
-            "A broader shopping query containing "
-            "only the product type and, optionally, "
-            "its main color"
-        )
-    )
-
-    desired_attributes: list[str] = Field(
-        default_factory=list
-    )
-
-    max_price: int | None = None
-    required: bool = True
+    preferences: list[StylePreference] = Field(default_factory=list)
 
 
-class SearchPlan(BaseModel):
-    searches: list[ProductSearch] = Field(
-        min_length=1,
-        max_length=6,
-    )
-
-
-class Product(BaseModel):
-    id: str
-    title: str
-    category: str
-
-    price: float
-    currency: str
-
-    attributes: list[str] = Field(
-        default_factory=list
-    )
-
-    source: str
-    url: str | None = None
-    image_url: str | None = None
-
-    rating: float | None = None
-    reviews: int | None = None
-    snippet: str | None = None
-
-    position: int | None = None
-    
 class OutfitCritique(BaseModel):
     outfit_id: str
 
@@ -195,22 +139,8 @@ class OutfitCritique(BaseModel):
 
     explanation: str
 
-    issues: list[str] = Field(
-        default_factory=list
-    )
+    issues: list[str] = Field(default_factory=list)
 
 
 class OutfitCritiqueBatch(BaseModel):
     critiques: list[OutfitCritique]
-    
-
-class ProductAttributes(BaseModel):
-    product_id: str
-
-    attributes: list[str] = Field(
-        default_factory=list
-    )
-
-
-class ProductAttributeBatch(BaseModel):
-    products: list[ProductAttributes]
