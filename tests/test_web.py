@@ -59,6 +59,11 @@ def test_run_agent_turn_uses_thread_and_context(monkeypatch):
         "graph",
         DummyGraph(),
     )
+    monkeypatch.setattr(
+        web,
+        "build_outfit_collage_data_url",
+        lambda outfit: "data:image/png;base64,abc",
+    )
 
     reply = web.run_agent_turn(
         user_input="black dress",
@@ -71,6 +76,7 @@ def test_run_agent_turn_uses_thread_and_context(monkeypatch):
     )
 
     assert reply["reply"] == "🍒 Собрала варианты и показала их карточками ниже.\n1. Образ — 12000 RUB"
+    assert reply["outfits"][0]["collage_data_url"] == "data:image/png;base64,abc"
     assert reply["outfits"][0]["items"][0]["url"] == "https://example.com/dress-1"
     assert reply["outfits"][0]["items"][0]["image_url"] == "https://example.com/dress-1.jpg"
     assert captured["payload"]["messages"][0].content == "black dress"
@@ -81,6 +87,8 @@ def test_run_agent_turn_uses_thread_and_context(monkeypatch):
 
 
 def test_serialize_outfits_keeps_image_and_click_target():
+    original = web.build_outfit_collage_data_url
+    web.build_outfit_collage_data_url = lambda outfit: "data:image/png;base64,xyz"
     outfits = web.serialize_outfits(
         [
             {
@@ -109,6 +117,7 @@ def test_serialize_outfits_keeps_image_and_click_target():
             "total_price": 200,
             "currency": "USD",
             "explanation": "works",
+            "collage_data_url": "data:image/png;base64,xyz",
             "issues": [],
             "items": [
                 {
@@ -123,6 +132,7 @@ def test_serialize_outfits_keeps_image_and_click_target():
             ],
         }
     ]
+    web.build_outfit_collage_data_url = original
 
 
 def test_update_session_settings_preserves_existing_values():

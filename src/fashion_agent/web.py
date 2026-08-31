@@ -8,6 +8,7 @@ from langchain_core.messages import HumanMessage
 
 from src.fashion_agent.graph import graph
 from src.fashion_agent.styleDNA import Context
+from src.fashion_agent.web_collage import build_outfit_collage_data_url
 
 SESSION_COOKIE = "cherry_session"
 
@@ -226,6 +227,20 @@ HTML_PAGE = """<!doctype html>
       .outfit-card {
         padding-top: 16px;
         border-top: 1px solid var(--line);
+      }
+
+      .outfit-collage {
+        margin-top: 14px;
+        overflow: hidden;
+        border-radius: 24px;
+        border: 1px solid rgba(34, 24, 26, 0.08);
+        background: linear-gradient(135deg, rgba(180, 51, 79, 0.05), rgba(232, 180, 107, 0.1));
+      }
+
+      .outfit-collage img {
+        display: block;
+        width: 100%;
+        height: auto;
       }
 
       .outfit-meta strong {
@@ -478,6 +493,13 @@ HTML_PAGE = """<!doctype html>
             `;
             outfitNode.appendChild(header);
 
+            if (outfit.collage_data_url) {
+              const collageNode = document.createElement("div");
+              collageNode.className = "outfit-collage";
+              collageNode.innerHTML = `<img src="${outfit.collage_data_url}" alt="Коллаж образа ${outfitIndex + 1}" loading="lazy">`;
+              outfitNode.appendChild(collageNode);
+            }
+
             const itemsNode = document.createElement("div");
             itemsNode.className = "product-grid";
 
@@ -665,6 +687,9 @@ def serialize_outfits(
             "explanation": outfit.get(
                 "explanation",
                 "",
+            ),
+            "collage_data_url": build_outfit_collage_data_url(
+                outfit
             ),
             "issues": outfit.get(
                 "issues",

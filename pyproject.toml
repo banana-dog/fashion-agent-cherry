@@ -13,8 +13,10 @@ dependencies = [
     "langchain-deepseek>=1.1.0",
     "langchain-openai>=1.6.0",
     "langgraph>=1.2.11",
+    "playwright>=1.55.0",
     "pydantic>=2.13.5",
     "python-dotenv>=1.2.3",
+    "rembg[cpu]>=2.0.67",
 ]
 
 [project.scripts]
