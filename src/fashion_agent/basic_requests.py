@@ -70,12 +70,12 @@ def route_after_extraction(
     state: FashionState,
 ) -> Literal[
     "ask_questions",
-    "retrieve_style_knowledge",
+    "check_context",
 ]:
     if state["missing_fields"]:
         return "ask_questions"
 
-    return "retrieve_style_knowledge"
+    return "check_context"
 
 
 def ask_questions(state: FashionState):

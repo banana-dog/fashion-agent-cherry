@@ -32,6 +32,7 @@ from fashion_agent.product_search.products_processing import (
 from fashion_agent.states import FashionState
 from fashion_agent.storage import build_checkpointer, build_store
 from fashion_agent.styleDNA import load_style_memory, update_style_memory
+from fashion_agent.tool_node import check_context
 
 load_dotenv()
 
@@ -63,6 +64,11 @@ builder.add_node(
 builder.add_node(
     "retrieve_style_knowledge",
     retrieve_style_knowledge,
+)
+
+builder.add_node(
+    "check_context",
+    check_context,  # type: ignore
 )
 
 builder.add_node(
@@ -113,6 +119,10 @@ builder.add_conditional_edges(
 )
 
 builder.add_edge("ask_questions", END)
+
+# Outside knowledge is gathered before the outfit is planned, so a forecast can
+# change what gets searched for.
+builder.add_edge("check_context", "retrieve_style_knowledge")
 
 builder.add_edge(
     "retrieve_style_knowledge",

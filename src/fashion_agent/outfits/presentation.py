@@ -10,6 +10,10 @@ from fashion_agent.outfits.diagnostics import (
 )
 from fashion_agent.outfits.labels import attribute_label
 from fashion_agent.states import FashionState
+from fashion_agent.tool_node import (
+    context_lines_from_state,
+    sources_ru_from_state,
+)
 
 
 def pretty_style_name(
@@ -169,6 +173,17 @@ def present_outfits(
 
     if relaxations:
         lines.append("Что пришлось ослабить: " + "; ".join(relaxations))
+
+    checked = context_lines_from_state(state)
+
+    if checked:
+        lines.append("Учла: " + "; ".join(checked))
+
+    gaps = sources_ru_from_state(state)
+
+    if gaps:
+        lines.append("Проверила: " + "; ".join(gaps))
+
 
     notes = advice_ru(ClientProfile.model_validate(state.get("client_profile") or {}))
 

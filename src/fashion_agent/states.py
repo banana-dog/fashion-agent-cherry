@@ -41,6 +41,8 @@ class FashionState(TypedDict):
     client_profile: dict | None
     wardrobe_items: list[dict]
     reference_preferences: list[dict]
+    tool_results: list[dict]
+    context_lines: list[str]
     retrieved_style_cards: list[dict]
     retrieved_outfit_formulas: list[dict]
     retrieved_trends: list[dict]

@@ -1,0 +1,159 @@
+"""The node where the agent reaches outside itself.
+
+Tools are declared, the agent chooses which to run, and whatever comes back goes
+into the state so the next prompts can reason about it and the final reply can
+cite it. Nothing here invents a reading: an unavailable tool leaves a stated gap
+that the reply is expected to mention.
+"""
+
+from langchain_core.messages import SystemMessage
+from langgraph.runtime import Runtime
+from pydantic import BaseModel, Field
+
+from fashion_agent.llm import Context, llm
+from fashion_agent.states import FashionState
+from fashion_agent.tools import (
+    ToolResult,
+    catalogue,
+    context_lines,
+    hints,
+    run_tools,
+    sources_ru,
+)
+
+
+class ToolCall(BaseModel):
+    tool: str = Field(description="The tool to run, exactly as named in the list")
+    place: str | None = Field(
+        default=None,
+        description="For the weather tool: the city the client named",
+    )
+
+
+class ToolPlanRequest(BaseModel):
+    calls: list[ToolCall] = Field(
+        default_factory=list,
+        description="Tools to run now, at most three, none repeated",
+    )
+
+
+planner = llm.with_structured_output(ToolPlanRequest)
+
+PLANNER_PROMPT = """
+You decide which outside tools to run before answering a request.
+
+Rules:
+- Run a tool only when the answer would change what you say. A forecast matters
+  for something to wear outside; it does not matter for a question about colour.
+- Never invent a fact you did not get from a tool. If a tool fails, say that you
+  could not check it.
+- Prefer nothing over a tool: returning an empty list is a valid answer and is
+  usually the right one.
+- Use the city the client gave. Do not invent one.
+- At most three tools, and never the same one twice.
+"""
+
+
+def _context_hint(request: dict | None) -> str:
+    if not request:
+        return ""
+
+    parts = []
+
+    for key, label in (
+        ("occasion", "повод"),
+        ("location", "город"),
+        ("budget_max", "бюджет"),
+    ):
+        value = request.get(key)
+
+        if value:
+            parts.append(f"{label}: {value}")
+
+    return "; ".join(parts)
+
+
+def plan_tools(
+    request: dict | None,
+    tools: list,
+) -> list[dict]:
+    try:
+        plan: ToolPlanRequest = planner.invoke(
+            [
+                SystemMessage(
+                    content=PLANNER_PROMPT
+                    + f"\nAvailable tools:\n{catalogue(tools)}\n"
+                ),
+                SystemMessage(
+                    content=f"Request: {_context_hint(request) or 'nothing yet'}"
+                ),
+            ]
+        )
+    except Exception:  # noqa: BLE001 - a turn must survive a planner failure
+        return []
+
+    return [call.model_dump() for call in plan.calls]
+
+
+def check_context(
+    state: FashionState,
+    runtime: Runtime[Context],
+    *,
+    tools: list | None = None,
+) -> dict:
+    """Plan and run tools, then leave the findings in the state."""
+    available = tools if tools is not None else default_tools()
+
+    if not available:
+        return {"tool_results": []}
+
+    calls = plan_tools(state.get("request"), available)
+
+    if not calls:
+        return {"tool_results": []}
+
+    results = run_tools(available, calls)
+
+    return {
+        "tool_results": [result.model_dump(mode="json") for result in results],
+        "context_lines": context_lines(results),
+    }
+
+
+def context_lines_from_state(state: FashionState) -> list[str]:
+    """What was checked, said plainly, for the client to read."""
+    return context_lines(
+        [ToolResult.model_validate(item) for item in state.get("tool_results", [])]
+    )
+
+
+def sources_ru_from_state(state: FashionState) -> list[str]:
+    return sources_ru(
+        [ToolResult.model_validate(item) for item in state.get("tool_results", [])]
+    )
+
+
+def hints_from_state(state: FashionState) -> list[str]:
+    return hints(
+        [ToolResult.model_validate(item) for item in state.get("tool_results", [])]
+    )
+
+
+_tools: list | None = None
+
+
+def default_tools() -> list:
+    global _tools
+
+    if _tools is None:
+        from fashion_agent.tools_weather import WeatherTool
+
+        _tools = [WeatherTool()]
+
+    return _tools
+
+
+def reset_tools() -> None:
+    global _tools
+
+    _tools = None

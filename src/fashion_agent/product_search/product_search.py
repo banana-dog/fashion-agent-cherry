@@ -81,6 +81,9 @@ RETRIEVED OUTFIT FORMULAS:
 ACTIVE TREND CARDS:
 {json.dumps(retrieved_trends, ensure_ascii=False, indent=2)}
 
+WHAT WAS JUST CHECKED OUTSIDE:
+{chr(10).join(state.get("context_lines", [])) or "nothing"}
+
 USER LOCALE:
 {runtime.context.locale}
 
@@ -136,10 +139,15 @@ Fill colors with the colour:target values that matter for
 this item. Do not list a colour the client did not ask for.
 Set brand only when the client named one.
 
-Use the client sizes to keep the plan realistic: if the
+Use the client sizes to keep the plan realistically: if the
 client wears a 46 top, do not plan a delicate XS knit.
 The client's size is applied as a filter automatically,
 so do not put the size into the query text.
+
+If a forecast was checked, let it decide the outer layer and
+the shoes: below freezing a coat is not optional, in rain the
+shoes must survive it, in strong wind a straight cut beats a
+fluttering one. Do not mention the forecast in the item name.
 
 Mark core outfit categories as required=true.
 If you use a retrieved formula, include its ID in

@@ -308,9 +308,10 @@ def test_formula_score_and_trend_score():
 
 def test_graph_routing_and_mermaid():
     assert route_after_extraction({"missing_fields": ["budget"]}) == "ask_questions"
-    assert route_after_extraction({"missing_fields": []}) == "retrieve_style_knowledge"
+    assert route_after_extraction({"missing_fields": []}) == "check_context"
 
     mermaid = graph.get_graph().draw_mermaid()
+    assert "check_context" in mermaid
     assert "retrieve_style_knowledge" in mermaid
     assert "interpret_style" in mermaid
     assert "create_search_plan" in mermaid
