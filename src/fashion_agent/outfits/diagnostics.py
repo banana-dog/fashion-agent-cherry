@@ -1,12 +1,12 @@
 from collections import Counter
 
-from src.fashion_agent.outfits.labels import (
+from fashion_agent.outfits.labels import (
     attribute_label,
     category_label,
     format_money,
 )
-from src.fashion_agent.states import AssemblyDiagnostics, FashionState
-from src.fashion_agent.styleDNA import product_hard_conflicts
+from fashion_agent.states import AssemblyDiagnostics, FashionState
+from fashion_agent.styleDNA import product_hard_conflicts
 
 
 def collect_desired_attributes(

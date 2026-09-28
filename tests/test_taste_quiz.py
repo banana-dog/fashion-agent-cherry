@@ -3,8 +3,8 @@ from types import SimpleNamespace
 import pytest
 from langgraph.store.memory import InMemoryStore
 
-from src.fashion_agent.styleDNA import load_style_memory, product_hard_conflicts
-from src.fashion_agent.taste_quiz import OutfitCard, TasteQuiz, inferred_preferences
+from fashion_agent.styleDNA import load_style_memory, product_hard_conflicts
+from fashion_agent.taste_quiz import OutfitCard, TasteQuiz, inferred_preferences
 
 
 def cards():
@@ -108,7 +108,7 @@ def test_memory_merge_preserves_explicit_preferences(tmp_path, monkeypatch):
 
 
 def test_choices_affect_product_ranking():
-    from src.fashion_agent.product_search.products_processing import rank_products
+    from fashion_agent.product_search.products_processing import rank_products
 
     preferences = inferred_preferences(
         [{"left": ["fit:oversized"], "right": ["fit:fitted"], "choice": "left"}] * 6
@@ -146,7 +146,7 @@ def test_concurrent_next_requests_share_one_pending_pair(tmp_path):
 
 
 def test_web_api_issues_and_accepts_pair_without_calling_agent(tmp_path, monkeypatch):
-    from src.fashion_agent import web
+    from fashion_agent import web
 
     monkeypatch.setenv("CHERRY_TASTE_DB", str(tmp_path / "taste.sqlite3"))
     monkeypatch.setattr(web, "load_cards", cards)

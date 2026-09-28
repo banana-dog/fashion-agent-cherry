@@ -5,8 +5,8 @@ from http.server import ThreadingHTTPServer
 
 import pytest
 
-from src.fashion_agent import web
-from src.fashion_agent.taste_quiz import TasteQuiz, load_cards
+from fashion_agent import web
+from fashion_agent.taste_quiz import TasteQuiz, load_cards
 
 
 def test_gallery_and_pairwise_flow_in_browser(tmp_path, monkeypatch):

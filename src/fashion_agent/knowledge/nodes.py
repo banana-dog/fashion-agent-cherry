@@ -4,13 +4,13 @@ from datetime import datetime
 
 from langchain_core.messages import SystemMessage
 
-from src.fashion_agent.knowledge.models import (
+from fashion_agent.knowledge.models import (
     ResolvedStyle,
     RetrievedStyleKnowledge,
 )
-from src.fashion_agent.knowledge.retrieval import StyleKnowledgeRetriever
-from src.fashion_agent.llm import llm
-from src.fashion_agent.states import FashionState
+from fashion_agent.knowledge.retrieval import StyleKnowledgeRetriever
+from fashion_agent.llm import llm
+from fashion_agent.states import FashionState
 
 style_interpreter = llm.with_structured_output(ResolvedStyle)
 

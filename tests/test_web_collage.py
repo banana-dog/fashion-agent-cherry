@@ -1,4 +1,4 @@
-from src.fashion_agent import web_collage
+from fashion_agent import web_collage
 
 
 def test_build_collage_html_embeds_cutouts():

@@ -6,8 +6,8 @@ from langchain_core.messages import (
     SystemMessage,
 )
 
-from src.fashion_agent.llm import llm
-from src.fashion_agent.states import FashionState, StylingRequest
+from fashion_agent.llm import llm
+from fashion_agent.states import FashionState, StylingRequest
 
 QUESTION_MAP = {
     "occasion": "Куда или для какого сценария собираем образ?",

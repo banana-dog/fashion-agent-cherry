@@ -1,21 +1,21 @@
 from itertools import product as cartesian_product
 
-from src.fashion_agent.outfits.diagnostics import (
+from fashion_agent.outfits.diagnostics import (
     build_assembly_diagnostics,
     build_missing_category_entry,
     register_relaxation,
 )
-from src.fashion_agent.outfits.labels import (
+from fashion_agent.outfits.labels import (
     attribute_label,
     category_label,
     format_money,
 )
-from src.fashion_agent.outfits.scoring import (
+from fashion_agent.outfits.scoring import (
     outfit_coherence_score,
     outfit_formula_score,
     outfit_trend_score,
 )
-from src.fashion_agent.states import FashionState
+from fashion_agent.states import FashionState
 
 FORMULA_SCORE_WEIGHT = 0.4
 TREND_SCORE_WEIGHT = 0.15

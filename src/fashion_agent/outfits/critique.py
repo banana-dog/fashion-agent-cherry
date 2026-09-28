@@ -2,8 +2,8 @@ import json
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from src.fashion_agent.llm import llm
-from src.fashion_agent.states import FashionState, OutfitCritiqueBatch
+from fashion_agent.llm import llm
+from fashion_agent.states import FashionState, OutfitCritiqueBatch
 
 outfit_critic = llm.with_structured_output(OutfitCritiqueBatch)
 

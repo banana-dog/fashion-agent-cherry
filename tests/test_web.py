@@ -1,4 +1,4 @@
-from src.fashion_agent import web
+from fashion_agent import web
 
 
 def test_new_session_state_uses_defaults():

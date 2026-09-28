@@ -4,9 +4,9 @@ import json
 
 import pytest
 
-from src.fashion_agent.outfits.labels import ATTRIBUTE_LABELS
-from src.fashion_agent.taste_catalog_web import render_catalog
-from src.fashion_agent.taste_quiz import (
+from fashion_agent.outfits.labels import ATTRIBUTE_LABELS
+from fashion_agent.taste_catalog_web import render_catalog
+from fashion_agent.taste_quiz import (
     PROJECT_ROOT,
     OutfitCard,
     TasteQuiz,
@@ -45,7 +45,7 @@ def test_local_image_path_cannot_escape_collection(path):
 
 
 def test_symlink_cannot_expose_file_outside_collection(tmp_path, monkeypatch):
-    from src.fashion_agent import taste_quiz
+    from fashion_agent import taste_quiz
 
     (tmp_path / "outfit_cards").mkdir()
     (tmp_path / "private.txt").write_text("private")
@@ -87,7 +87,7 @@ def test_catalog_embeds_descriptions_as_data():
 def test_web_serves_original_jpeg_with_special_name_or_no_extension(
     card_id, monkeypatch
 ):
-    from src.fashion_agent import web
+    from fashion_agent import web
 
     cards = load_cards(PROJECT_ROOT / "data/taste_cards.json")
     monkeypatch.setattr(web, "load_cards", lambda: cards)
@@ -109,7 +109,7 @@ def test_web_serves_original_jpeg_with_special_name_or_no_extension(
 
 
 def test_image_route_does_not_accept_file_paths(monkeypatch):
-    from src.fashion_agent import web
+    from fashion_agent import web
 
     monkeypatch.setattr(web, "load_cards", list)
     handler = object.__new__(web.CherryWebHandler)

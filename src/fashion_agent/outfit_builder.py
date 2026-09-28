@@ -1,10 +1,10 @@
-from src.fashion_agent.outfits.builder import (
+from fashion_agent.outfits.builder import (
     FORMULA_SCORE_WEIGHT,
     TREND_SCORE_WEIGHT,
     build_outfits,
 )
-from src.fashion_agent.outfits.critique import critique_outfits
-from src.fashion_agent.outfits.diagnostics import (
+from fashion_agent.outfits.critique import critique_outfits
+from fashion_agent.outfits.diagnostics import (
     build_assembly_diagnostics,
     build_missing_category_entry,
     collect_desired_attributes,
@@ -13,7 +13,7 @@ from src.fashion_agent.outfits.diagnostics import (
     hard_dislike_attributes,
     register_relaxation,
 )
-from src.fashion_agent.outfits.labels import (
+from fashion_agent.outfits.labels import (
     ATTRIBUTE_LABELS,
     CATEGORY_LABELS,
     CURRENCY_SYMBOLS,
@@ -21,11 +21,11 @@ from src.fashion_agent.outfits.labels import (
     category_label,
     format_money,
 )
-from src.fashion_agent.outfits.presentation import (
+from fashion_agent.outfits.presentation import (
     present_outfits,
     route_after_build,
 )
-from src.fashion_agent.outfits.scoring import (
+from fashion_agent.outfits.scoring import (
     attribute_values,
     outfit_coherence_score,
     outfit_formula_score,

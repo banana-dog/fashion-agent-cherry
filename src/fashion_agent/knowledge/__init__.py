@@ -1,4 +1,4 @@
-from src.fashion_agent.knowledge.models import (
+from fashion_agent.knowledge.models import (
     FormulaItemRequirement,
     OutfitFormula,
     ResolvedStyle,
@@ -8,15 +8,15 @@ from src.fashion_agent.knowledge.models import (
     TrendCard,
     TrendSource,
 )
-from src.fashion_agent.knowledge.nodes import (
+from fashion_agent.knowledge.nodes import (
     interpret_style,
     retrieve_style_knowledge,
 )
-from src.fashion_agent.knowledge.repository import (
+from fashion_agent.knowledge.repository import (
     FashionKnowledgeRepository,
     get_knowledge_repository,
 )
-from src.fashion_agent.knowledge.retrieval import StyleKnowledgeRetriever
+from fashion_agent.knowledge.retrieval import StyleKnowledgeRetriever
 
 __all__ = [
     "FashionKnowledgeRepository",

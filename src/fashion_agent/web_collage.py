@@ -5,7 +5,7 @@ import io
 import httpx
 from PIL import Image
 
-from src.fashion_agent.outfits.labels import format_money
+from fashion_agent.outfits.labels import format_money
 
 COLLAGE_WIDTH = 900
 COLLAGE_HEIGHT = 1200

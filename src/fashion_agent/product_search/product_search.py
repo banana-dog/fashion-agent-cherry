@@ -12,6 +12,12 @@ from fashion_agent.client_profile import (
     desired_size,
     profile_ru_lines,
 )
+from fashion_agent.llm import Context, llm
+from fashion_agent.product_search.models import (
+    ProductAttributeBatch,
+    ProductSearchTask,
+    SearchPlan,
+)
 from fashion_agent.product_search.registry import get_sources
 from fashion_agent.product_search.sources import (
     ProductQuery,
@@ -20,13 +26,7 @@ from fashion_agent.product_search.sources import (
     SourceResult,
     SourceUnavailable,
 )
-from src.fashion_agent.llm import Context, llm
-from src.fashion_agent.product_search.models import (
-    ProductAttributeBatch,
-    ProductSearchTask,
-    SearchPlan,
-)
-from src.fashion_agent.states import FashionState
+from fashion_agent.states import FashionState
 
 search_plan_extractor = llm.with_structured_output(SearchPlan)
 

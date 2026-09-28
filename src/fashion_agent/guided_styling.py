@@ -2,7 +2,7 @@
 
 import re
 
-from src.fashion_agent.taste_quiz import TasteQuiz
+from fashion_agent.taste_quiz import TasteQuiz
 
 
 def _norm(value: str) -> str:

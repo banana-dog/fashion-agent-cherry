@@ -44,6 +44,24 @@
 uv run python scripts/search_quality.py --verbose
 ```
 
+## Гардероб и фото
+
+Cherry умеет принимать фотографии вещей, образов на оценку и референсов вкуса.
+
+- `POST /api/wardrobe/items` — multipart с полем `photo`, распознанная вещь
+  возвращается черновиком, который клиент подтверждает через
+  `PATCH /api/wardrobe/items/<id>`. Цвет важнее всего, поэтому исправление
+  распознавания обязательно.
+- `POST /api/wardrobe/look` — оценка образа по фото: пять осей, что работает,
+  что изменить, и чего на фото не видно.
+- `POST /api/wardrobe/references` — фото образов «нравится / не нравится»,
+  читается в предпочтения.
+
+Фото хранятся в `data/wardrobe_images/<user>/` и никуда не уходят, кроме
+конфигурированного vision-эндпоинта. Vision не настроен, если нет
+`VISION_API_KEY`: вещи сохраняются, но распознавание и оценка образа
+возвращают понятную ошибку, а не пустоту.
+
 ## Переменные окружения
 
 | Переменная | Назначение |
@@ -54,6 +72,8 @@ uv run python scripts/search_quality.py --verbose
 | `CHERRY_SEARCH_TIMEOUT`, `CHERRY_SEARCH_ATTEMPTS` | таймаут и попытки поисковых движков |
 | `CHERRY_STORE_DB`, `CHERRY_CHECKPOINT_DB` | пути к базам |
 | `CHERRY_TASTE_DB`, `CHERRY_TASTE_CARDS` | база и каталог теста вкуса |
+| `CHERRY_WARDROBE_DB`, `CHERRY_WARDROBE_IMAGES` | база и каталог фото гардероба |
+| `VISION_API_KEY`, `VISION_BASE_URL`, `VISION_MODEL` | vision-эндпоинт |
 
 ## Проверка
 

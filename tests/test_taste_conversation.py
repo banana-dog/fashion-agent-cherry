@@ -1,5 +1,5 @@
-from src.fashion_agent.taste_conversation import TasteConversation, build_taste_profile
-from src.fashion_agent.taste_quiz import OutfitCard, TasteQuiz
+from fashion_agent.taste_conversation import TasteConversation, build_taste_profile
+from fashion_agent.taste_quiz import OutfitCard, TasteQuiz
 
 
 def test_agent_offers_then_starts_and_returns_profile(tmp_path, monkeypatch):
@@ -7,7 +7,7 @@ def test_agent_offers_then_starts_and_returns_profile(tmp_path, monkeypatch):
         OutfitCard(id="a", image_url="https://example.com/a.jpg", description="Свободный", attributes=["fit:oversized", "color:black"]),
         OutfitCard(id="b", image_url="https://example.com/b.jpg", description="Прилегающий", attributes=["fit:fitted", "color:cream"]),
     ]
-    monkeypatch.setattr("src.fashion_agent.taste_conversation.load_cards", lambda: cards)
+    monkeypatch.setattr("fashion_agent.taste_conversation.load_cards", lambda: cards)
     quiz = TasteQuiz(tmp_path / "taste.sqlite3")
     conversation = TasteConversation(quiz)
     offered = conversation.welcome("alice")
@@ -24,7 +24,7 @@ def test_decline_keeps_normal_chat_available(tmp_path, monkeypatch):
         OutfitCard(id="a", image_url="https://example.com/a.jpg", description="A", attributes=["color:black"]),
         OutfitCard(id="b", image_url="https://example.com/b.jpg", description="B", attributes=["color:cream"]),
     ]
-    monkeypatch.setattr("src.fashion_agent.taste_conversation.load_cards", lambda: cards)
+    monkeypatch.setattr("fashion_agent.taste_conversation.load_cards", lambda: cards)
     conversation = TasteConversation(TasteQuiz(tmp_path / "taste.sqlite3"))
     conversation.welcome("alice")
     result = conversation.message("alice", "позже")

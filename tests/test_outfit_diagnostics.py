@@ -1,8 +1,8 @@
-from src.fashion_agent.outfit_builder import (
+from fashion_agent.outfit_builder import (
     build_outfits,
     present_outfits,
 )
-from src.fashion_agent.styleDNA import (
+from fashion_agent.styleDNA import (
     product_hard_conflicts,
 )
 

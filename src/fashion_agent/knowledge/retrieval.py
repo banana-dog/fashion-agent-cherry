@@ -2,12 +2,12 @@ import re
 from datetime import date
 from difflib import SequenceMatcher
 
-from src.fashion_agent.knowledge.models import (
+from fashion_agent.knowledge.models import (
     RetrievedStyleKnowledge,
     StyleCard,
     TrendCard,
 )
-from src.fashion_agent.knowledge.repository import (
+from fashion_agent.knowledge.repository import (
     get_knowledge_repository,
     normalize_alias,
 )

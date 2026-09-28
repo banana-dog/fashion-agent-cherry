@@ -1,5 +1,5 @@
-from src.fashion_agent.guided_styling import GuidedStyling
-from src.fashion_agent.taste_quiz import TasteQuiz
+from fashion_agent.guided_styling import GuidedStyling
+from fashion_agent.taste_quiz import TasteQuiz
 
 
 def test_guided_flow_reaches_search_only_after_approval_and_inventory(tmp_path):

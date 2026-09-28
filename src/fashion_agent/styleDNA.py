@@ -7,10 +7,10 @@ from langchain_core.messages import (
 from langgraph.runtime import Runtime
 
 from fashion_agent.client_profile import load_client_profile
+from fashion_agent.llm import Context, llm
 from fashion_agent.states import FashionState, PreferenceExtraction
 from fashion_agent.storage import store_namespace
-from src.fashion_agent.llm import Context, llm
-from src.fashion_agent.taste_quiz import TasteQuiz
+from fashion_agent.taste_quiz import TasteQuiz
 
 preference_extractor = llm.with_structured_output(PreferenceExtraction)
 

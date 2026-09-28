@@ -2,12 +2,12 @@ from typing import Literal
 
 from langchain_core.messages import AIMessage
 
-from src.fashion_agent.outfits.diagnostics import (
+from fashion_agent.outfits.diagnostics import (
     failure_messages,
     format_constraints_block,
 )
-from src.fashion_agent.outfits.labels import attribute_label
-from src.fashion_agent.states import FashionState
+from fashion_agent.outfits.labels import attribute_label
+from fashion_agent.states import FashionState
 
 
 def pretty_style_name(

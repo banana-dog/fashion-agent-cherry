@@ -2,7 +2,7 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
-from src.fashion_agent.knowledge.models import (
+from fashion_agent.knowledge.models import (
     OutfitFormula,
     StyleCard,
     TrendCard,

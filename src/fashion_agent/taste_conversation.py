@@ -3,8 +3,8 @@
 import re
 from collections import Counter
 
-from src.fashion_agent.outfits.labels import attribute_label
-from src.fashion_agent.taste_quiz import TasteQuiz, inferred_preferences, load_cards
+from fashion_agent.outfits.labels import attribute_label
+from fashion_agent.taste_quiz import TasteQuiz, inferred_preferences, load_cards
 
 QUIZ_LENGTH = 6
 INVITATION = (

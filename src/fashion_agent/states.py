@@ -4,7 +4,7 @@ from langchain_core.messages import AnyMessage
 from langgraph.graph import add_messages
 from pydantic import BaseModel, Field
 
-from src.fashion_agent.product_search.merge_products import merge_products
+from fashion_agent.product_search.merge_products import merge_products
 
 
 class MissingCategoryDiagnostics(TypedDict):

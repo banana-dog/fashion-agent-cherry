@@ -1,7 +1,7 @@
 import json
 
-from src.fashion_agent.outfits.labels import attribute_label
-from src.fashion_agent.taste_quiz import OutfitCard
+from fashion_agent.outfits.labels import attribute_label
+from fashion_agent.taste_quiz import OutfitCard
 
 
 def render_catalog(cards: list[OutfitCard]) -> str:

@@ -1,25 +1,25 @@
 import json
 from datetime import date
 
-from src.fashion_agent.basic_requests import route_after_extraction
-from src.fashion_agent.graph import graph
-from src.fashion_agent.knowledge.models import ResolvedStyle
-from src.fashion_agent.knowledge.nodes import (
+from fashion_agent.basic_requests import route_after_extraction
+from fashion_agent.graph import graph
+from fashion_agent.knowledge.models import ResolvedStyle
+from fashion_agent.knowledge.nodes import (
     interpret_style,
     retrieve_style_knowledge,
 )
-from src.fashion_agent.knowledge.repository import (
+from fashion_agent.knowledge.repository import (
     FashionKnowledgeRepository,
 )
-from src.fashion_agent.knowledge.retrieval import (
+from fashion_agent.knowledge.retrieval import (
     StyleKnowledgeRetriever,
 )
-from src.fashion_agent.outfit_builder import (
+from fashion_agent.outfit_builder import (
     outfit_formula_score,
     outfit_trend_score,
 )
-from src.fashion_agent.product_search.product_search import dispatch_product_searches
-from src.fashion_agent.product_search.products_processing import rank_products
+from fashion_agent.product_search.product_search import dispatch_product_searches
+from fashion_agent.product_search.products_processing import rank_products
 
 
 def test_repository_loads_seed_data_and_normalizes_aliases():
@@ -176,7 +176,7 @@ def test_interpret_style_sanitizes_output(monkeypatch):
             )
 
     monkeypatch.setattr(
-        "src.fashion_agent.knowledge.nodes.style_interpreter",
+        "fashion_agent.knowledge.nodes.style_interpreter",
         DummyInterpreter(),
     )
 
