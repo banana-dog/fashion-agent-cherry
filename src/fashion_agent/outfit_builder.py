@@ -1,4 +1,8 @@
-from src.fashion_agent.outfits.builder import build_outfits
+from src.fashion_agent.outfits.builder import (
+    FORMULA_SCORE_WEIGHT,
+    TREND_SCORE_WEIGHT,
+    build_outfits,
+)
 from src.fashion_agent.outfits.critique import critique_outfits
 from src.fashion_agent.outfits.diagnostics import (
     build_assembly_diagnostics,
@@ -24,12 +28,16 @@ from src.fashion_agent.outfits.presentation import (
 from src.fashion_agent.outfits.scoring import (
     attribute_values,
     outfit_coherence_score,
+    outfit_formula_score,
+    outfit_trend_score,
 )
 
 __all__ = [
     "ATTRIBUTE_LABELS",
     "CATEGORY_LABELS",
     "CURRENCY_SYMBOLS",
+    "FORMULA_SCORE_WEIGHT",
+    "TREND_SCORE_WEIGHT",
     "attribute_label",
     "attribute_values",
     "build_assembly_diagnostics",
@@ -43,6 +51,8 @@ __all__ = [
     "format_money",
     "hard_dislike_attributes",
     "outfit_coherence_score",
+    "outfit_formula_score",
+    "outfit_trend_score",
     "present_outfits",
     "register_relaxation",
     "route_after_build",

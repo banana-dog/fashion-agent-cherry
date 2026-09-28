@@ -1,0 +1,56 @@
+[
+  {
+    "id": "trend:laced_up_2026",
+    "name": "Laced Up",
+    "description": "Romantic lace and lace-up detail used as a visible styling accent rather than a full costume treatment.",
+    "valid_from": "2026-01-01",
+    "valid_until": "2026-12-31",
+    "regions": ["global"],
+    "attributes": ["material:lace", "detail:ribbons", "style:romantic"],
+    "compatible_styles": ["coquette", "balletcore", "romantic_goth"],
+    "trend_score": 0.46,
+    "sources": [
+      {
+        "title": "Pinterest Predicts 2026: Laced Up",
+        "url": "https://business.pinterest.com/pinterest-predicts/2026/laced-up/",
+        "published_at": "2025-12-09"
+      }
+    ]
+  },
+  {
+    "id": "trend:poetcore_2026",
+    "name": "Poetcore",
+    "description": "Soft literary romance with flowing layers, delicate texture and a more poetic version of femininity.",
+    "valid_from": "2026-01-01",
+    "valid_until": "2026-12-31",
+    "regions": ["global"],
+    "attributes": ["style:romantic", "material:lace", "silhouette:midi"],
+    "compatible_styles": ["coquette", "romantic_goth", "dark_academia", "balletcore"],
+    "trend_score": 0.4,
+    "sources": [
+      {
+        "title": "Pinterest Predicts 2026: Poetcore",
+        "url": "https://business.pinterest.com/en-gb/pinterest-predicts/2026/poetcore/",
+        "published_at": "2025-12-09"
+      }
+    ]
+  },
+  {
+    "id": "trend:glamoratti_2026",
+    "name": "Glamoratti",
+    "description": "High-glam accent dressing built around rich texture, statement glamour and visibly polished finishing details.",
+    "valid_from": "2026-01-01",
+    "valid_until": "2026-12-31",
+    "regions": ["global"],
+    "attributes": ["material:faux_fur", "detail:gold_hardware", "pattern:animal_print"],
+    "compatible_styles": ["mob_wife", "old_money", "office_siren"],
+    "trend_score": 0.34,
+    "sources": [
+      {
+        "title": "Pinterest Predicts 2026: Glamoratti",
+        "url": "https://business.pinterest.com/pinterest-predicts/2026/glamoratti/",
+        "published_at": "2025-12-09"
+      }
+    ]
+  }
+]

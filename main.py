@@ -10,11 +10,7 @@ from src.fashion_agent.web import run_web_server
 
 def run_cli():
     thread_id = str(uuid.uuid4())
-    config = {
-        "configurable": {
-            "thread_id": thread_id
-        }
-    }
+    config = {"configurable": {"thread_id": thread_id}}
     context = Context(
         user_id="demo-user",
         locale="ru-RU",
@@ -28,11 +24,7 @@ def run_cli():
         if user_input == "/new":
             thread_id = str(uuid.uuid4())
 
-            config = {
-                "configurable": {
-                    "thread_id": thread_id
-                }
-            }
+            config = {"configurable": {"thread_id": thread_id}}
 
             print("\n✨ Новый разговор\n")
             continue
@@ -45,15 +37,9 @@ def run_cli():
             break
 
         result = graph.invoke(
-            {
-                "messages": [
-                    HumanMessage(
-                        content=user_input
-                    )
-                ]
-            }, # type: ignore
-            config=config, # type: ignore
-            context=context # type: ignore
+            {"messages": [HumanMessage(content=user_input)]},  # type: ignore
+            config=config,  # type: ignore
+            context=context,  # type: ignore
         )
 
         last_message = result["messages"][-1]

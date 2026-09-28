@@ -6,7 +6,102 @@ from src.fashion_agent.outfits.diagnostics import (
     failure_messages,
     format_constraints_block,
 )
+from src.fashion_agent.outfits.labels import attribute_label
 from src.fashion_agent.states import FashionState
+
+
+def pretty_style_name(
+    style_name: str,
+) -> str:
+    return style_name.replace("_", " ")
+
+
+def explanation_lines(
+    outfit: dict,
+    state: FashionState,
+) -> list[str]:
+    lines = []
+    outfit_attributes = {
+        attribute
+        for item in outfit["items"]
+        for attribute in item.get(
+            "attributes",
+            [],
+        )
+    }
+
+    resolved_style = state.get("resolved_style") or {}
+    top_styles = resolved_style.get("styles", [])[:2]
+    desired_matches = [
+        attribute_label(attribute)
+        for attribute in resolved_style.get(
+            "desired_attributes",
+            [],
+        )
+        if attribute in outfit_attributes
+    ][:3]
+
+    if top_styles and desired_matches:
+        lines.append(
+            f"• {pretty_style_name(top_styles[0]['name'])} читается через "
+            + ", ".join(desired_matches)
+            + "."
+        )
+
+    formulas_by_id = {
+        formula["id"]: formula
+        for formula in state.get(
+            "retrieved_outfit_formulas",
+            [],
+        )
+    }
+    for formula_id in outfit.get(
+        "matched_formula_ids",
+        [],
+    )[:1]:
+        formula = formulas_by_id.get(formula_id)
+        if not formula:
+            continue
+
+        balance_rules = formula.get(
+            "balance_rules",
+            [],
+        )
+        if balance_rules:
+            lines.append(
+                f"• Формула «{formula['name']}» работает здесь: {balance_rules[0]}"
+            )
+        else:
+            lines.append(
+                f"• Формула «{formula['name']}» помогает сохранить цельность образа."
+            )
+
+    trends_by_id = {
+        trend["id"]: trend
+        for trend in state.get(
+            "retrieved_trends",
+            [],
+        )
+    }
+    for trend_id in outfit.get(
+        "matched_trend_ids",
+        [],
+    )[:1]:
+        trend = trends_by_id.get(trend_id)
+        if trend:
+            lines.append(
+                f"• {trend['name']} использован как мягкий акцент, а не как обязательная тема всего образа."
+            )
+
+    if resolved_style.get("avoid_costume_effect", True) and (
+        outfit.get("matched_formula_ids") or outfit.get("matched_trend_ids")
+    ):
+        lines.append("• Образ остаётся современным и не уходит в костюмность.")
+
+    if not lines and outfit.get("explanation"):
+        lines.append(f"• {outfit['explanation']}")
+
+    return lines[:4]
 
 
 def present_outfits(
@@ -68,6 +163,11 @@ def present_outfits(
     else:
         lines.append("🍒 Идеальных совпадений нет, но вот ближайшие варианты:")
 
+    relaxations = search_relaxation_notes(state)
+
+    if relaxations:
+        lines.append("Что пришлось ослабить: " + "; ".join(relaxations))
+
     for index, outfit in enumerate(
         selected,
         start=1,
@@ -84,13 +184,35 @@ def present_outfits(
             if item.get("image_url"):
                 lines.append(f"  Фото: {item['image_url']}")
 
-        lines.append(f"Почему работает: {outfit['explanation']}")
-        lines.append(f"Debug score: {outfit['final_score']}")
+        lines.append("Почему работает:")
+        lines.extend(
+            explanation_lines(
+                outfit,
+                state,
+            )
+        )
 
         if outfit["issues"]:
             lines.append("Нюансы: " + "; ".join(outfit["issues"]))
 
     return {"messages": [AIMessage(content="\n".join(lines))]}
+
+
+def search_relaxation_notes(state: FashionState) -> list[str]:
+    """Which search constraints were dropped, so the client is not misled.
+
+    A source only reports a relaxation when a constraint was actually given up,
+    which matters most for a budget: an item that over the limit must never be
+    presented as if it had been found within budget.
+    """
+    notes: list[str] = []
+
+    for report in state.get("search_reports", []):
+        for label in report.get("relaxed", []):
+            if label not in notes:
+                notes.append(label)
+
+    return notes
 
 
 def route_after_build(

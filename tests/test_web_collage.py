@@ -51,9 +51,7 @@ def test_remove_background_falls_back_without_onnxruntime(monkeypatch):
         def remove(
             image_bytes,
         ):
-            raise RuntimeError(
-                "No onnxruntime backend found."
-            )
+            raise RuntimeError("No onnxruntime backend found.")
 
     monkeypatch.setattr(
         web_collage,
@@ -100,7 +98,9 @@ def test_build_outfit_collage_data_url_runs_pipeline(monkeypatch):
     monkeypatch.setattr(
         web_collage,
         "image_bytes_to_data_url",
-        lambda image_bytes, mime_type="image/png": f"data:{mime_type};base64,{image_bytes.decode('latin1')}",
+        lambda image_bytes, mime_type="image/png": (
+            f"data:{mime_type};base64,{image_bytes.decode('latin1')}"
+        ),
     )
 
     result = web_collage.build_outfit_collage_data_url(

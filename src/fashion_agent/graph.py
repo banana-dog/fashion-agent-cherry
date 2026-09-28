@@ -1,74 +1,78 @@
+from dotenv import load_dotenv
+from langgraph.graph import (
+    END,
+    START,
+    StateGraph,
+)
+
 from fashion_agent.basic_requests import (
-    ask_questions, 
+    ask_questions,
     extract_request,
-    route_after_extraction 
+    route_after_extraction,
 )
-from src.fashion_agent.styleDNA import (
-    update_style_memory,
-    load_style_memory
+from fashion_agent.knowledge.nodes import (
+    interpret_style,
+    retrieve_style_knowledge,
 )
-from fashion_agent.product_search.product_search import(
+from fashion_agent.outfit_builder import (
+    build_outfits,
+    critique_outfits,
+    present_outfits,
+    route_after_build,
+)
+from fashion_agent.product_search.product_search import (
     create_search_plan,
     dispatch_product_searches,
     search_one_category,
 )
-from fashion_agent.product_search.products_processing import(
+from fashion_agent.product_search.products_processing import (
     enrich_product_attributes,
-    rank_products
-)
-from fashion_agent.outfit_builder import (
-    route_after_build, 
-    build_outfits, 
-    critique_outfits, 
-    present_outfits
+    rank_products,
 )
 from fashion_agent.states import FashionState
-from langgraph.checkpoint.memory import InMemorySaver
-from langgraph.graph import (
-    StateGraph,
-    START,
-    END,
-)
-from langgraph.store.memory import InMemoryStore
-from dotenv import load_dotenv
-
+from fashion_agent.storage import build_checkpointer, build_store
+from src.fashion_agent.styleDNA import load_style_memory, update_style_memory
 
 load_dotenv()
 
-store = InMemoryStore()
-checkpointer = InMemorySaver()
+store = build_store()
+checkpointer = build_checkpointer()
 builder = StateGraph(FashionState)
 
 ############NODES##############
 
-builder.add_node(
-    "extract_request",
-    extract_request
-)
+builder.add_node("extract_request", extract_request)
 
-builder.add_node(
-    "ask_questions",
-    ask_questions
-)
+builder.add_node("ask_questions", ask_questions)
 
 builder.add_node(
     "load_style_memory",
-    load_style_memory  # type: ignore
+    load_style_memory,  # type: ignore
 )
 
 builder.add_node(
     "update_style_memory",
-    update_style_memory # type: ignore
+    update_style_memory,  # type: ignore
 )
 
 builder.add_node(
     "create_search_plan",
-    create_search_plan, # type: ignore
+    create_search_plan,  # type: ignore
+)
+
+builder.add_node(
+    "retrieve_style_knowledge",
+    retrieve_style_knowledge,
+)
+
+builder.add_node(
+    "interpret_style",
+    interpret_style,  # type: ignore
 )
 
 builder.add_node(
     "search_one_category",
-    search_one_category, # type: ignore
+    search_one_category,  # type: ignore
 )
 
 builder.add_node(
@@ -97,29 +101,27 @@ builder.add_node(
 )
 #########EDGES##############
 
-builder.add_edge(
-    START,
-    "update_style_memory"
-)
+builder.add_edge(START, "update_style_memory")
 
-builder.add_edge(
-    "update_style_memory",
-    "load_style_memory"
-)
+builder.add_edge("update_style_memory", "load_style_memory")
 
-builder.add_edge(
-    "load_style_memory",
-    "extract_request"
-)
+builder.add_edge("load_style_memory", "extract_request")
 
 builder.add_conditional_edges(
     "extract_request",
     route_after_extraction,
 )
 
+builder.add_edge("ask_questions", END)
+
 builder.add_edge(
-    "ask_questions",
-    END
+    "retrieve_style_knowledge",
+    "interpret_style",
+)
+
+builder.add_edge(
+    "interpret_style",
+    "create_search_plan",
 )
 
 builder.add_conditional_edges(

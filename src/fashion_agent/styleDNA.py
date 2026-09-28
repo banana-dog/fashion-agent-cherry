@@ -1,13 +1,25 @@
+from functools import lru_cache
+
 from langchain_core.messages import (
     HumanMessage,
     SystemMessage,
 )
 from langgraph.runtime import Runtime
 
+from fashion_agent.client_profile import load_client_profile
 from fashion_agent.states import FashionState, PreferenceExtraction
+from fashion_agent.storage import store_namespace
 from src.fashion_agent.llm import Context, llm
+from src.fashion_agent.taste_quiz import TasteQuiz
 
 preference_extractor = llm.with_structured_output(PreferenceExtraction)
+
+MAX_PREFERENCES = 500
+
+
+@lru_cache(maxsize=1)
+def taste_quiz() -> TasteQuiz:
+    return TasteQuiz()
 
 
 def update_style_memory(
@@ -41,6 +53,10 @@ Do not infer preferences unless the user clearly expresses them.
 
 Normalize target names to concise lowercase English snake_case.
 
+Use polarity "neutral" ONLY when the user retracts a preference they
+stated before ("actually I don't mind skinny jeans"). Neutral removes the
+stored preference instead of adding one.
+
 If there are no stable preferences, return an empty list.
 """
     )
@@ -52,14 +68,17 @@ If there are no stable preferences, return an empty list.
         ]
     )
 
-    namespace = (
-        "users",
-        runtime.context.user_id,
-        "style_preferences",
-    )
+    namespace = store_namespace(runtime.context.user_id)
 
     for preference in result.preferences:  # type: ignore
         key = f"{preference.category}:{preference.target}"
+
+        if preference.polarity == "neutral":
+            runtime.store.delete(  # type: ignore
+                namespace,
+                key,
+            )
+            continue
 
         runtime.store.put(  # type: ignore
             namespace,
@@ -74,20 +93,30 @@ def load_style_memory(
     state: FashionState,
     runtime: Runtime[Context],
 ):
-    namespace = (
-        "users",
-        runtime.context.user_id,
-        "style_preferences",
-    )
+    namespace = store_namespace(runtime.context.user_id)
 
     memories = runtime.store.search(  # type: ignore
         namespace,
-        limit=100,
+        limit=MAX_PREFERENCES,
     )
 
     preferences = [memory.value for memory in memories]
+    explicit_keys = {(value["category"], value["target"]) for value in preferences}
+    preferences.extend(
+        value
+        for value in taste_quiz().preferences(runtime.context.user_id)
+        if (value["category"], value["target"]) not in explicit_keys
+    )
 
-    return {"style_preferences": preferences}
+    profile = load_client_profile(
+        runtime.store,  # type: ignore
+        runtime.context.user_id,
+    )
+
+    return {
+        "style_preferences": preferences,
+        "client_profile": profile.model_dump(mode="json"),
+    }
 
 
 STRENGTH = {
@@ -122,6 +151,8 @@ def product_hard_conflicts(
     hard_conflicts = []
 
     for preference in preferences:
+        if preference.get("source") == "pairwise":
+            continue
         preference_key = f"{preference['category']}:{preference['target']}"
 
         if preference_key not in product_attributes:

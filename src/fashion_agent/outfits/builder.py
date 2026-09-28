@@ -10,8 +10,15 @@ from src.fashion_agent.outfits.labels import (
     category_label,
     format_money,
 )
-from src.fashion_agent.outfits.scoring import outfit_coherence_score
+from src.fashion_agent.outfits.scoring import (
+    outfit_coherence_score,
+    outfit_formula_score,
+    outfit_trend_score,
+)
 from src.fashion_agent.states import FashionState
+
+FORMULA_SCORE_WEIGHT = 0.4
+TREND_SCORE_WEIGHT = 0.15
 
 
 def build_outfits(
@@ -45,7 +52,22 @@ def build_outfits(
     products_by_category = {}
 
     for category, search in search_by_category.items():
-        products = ranked_products_by_category[category][:4]
+        products = [
+            product
+            for product in ranked_products_by_category[category][:4]
+            if product.get("price") is not None
+        ]
+        priced_out = [
+            product
+            for product in ranked_products_by_category[category][:4]
+            if product.get("price") is None
+        ]
+
+        if priced_out and not products:
+            register_relaxation(
+                diagnostics,
+                "уточнить цену вручную: площадка не показала её в выдаче",
+            )
 
         if search["required"] and not products:
             missing_entry = build_missing_category_entry(
@@ -130,6 +152,36 @@ def build_outfits(
         }
 
     outfits = []
+    selected_formula_ids = {
+        formula_id
+        for search in state["search_plan"]
+        for formula_id in search.get(
+            "formula_ids",
+            [],
+        )
+    }
+    selected_trend_ids = {
+        trend_id
+        for search in state["search_plan"]
+        for trend_id in search.get(
+            "trend_ids",
+            [],
+        )
+    }
+    formulas = state.get(
+        "retrieved_outfit_formulas",
+        [],
+    )
+    trends = state.get(
+        "retrieved_trends",
+        [],
+    )
+    if selected_formula_ids:
+        formulas = [
+            formula for formula in formulas if formula["id"] in selected_formula_ids
+        ]
+    if selected_trend_ids:
+        trends = [trend for trend in trends if trend["id"] in selected_trend_ids]
 
     for combination in cartesian_product(*category_options):
         items = [item for item in combination if item is not None]
@@ -149,7 +201,20 @@ def build_outfits(
 
         product_score = sum(item["score"] for item in items) / len(items)
         coherence_score = outfit_coherence_score(items)
-        base_score = product_score + coherence_score
+        formula_score, matched_formula_ids = outfit_formula_score(
+            items,
+            formulas,
+        )
+        trend_score, matched_trend_ids = outfit_trend_score(
+            items,
+            trends,
+        )
+        base_score = (
+            product_score
+            + coherence_score
+            + FORMULA_SCORE_WEIGHT * formula_score
+            + TREND_SCORE_WEIGHT * trend_score
+        )
 
         outfits.append(
             {
@@ -162,6 +227,10 @@ def build_outfits(
                     3,
                 ),
                 "coherence_score": coherence_score,
+                "formula_score": formula_score,
+                "trend_score": trend_score,
+                "matched_formula_ids": matched_formula_ids,
+                "matched_trend_ids": matched_trend_ids,
                 "base_score": round(
                     base_score,
                     3,

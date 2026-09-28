@@ -162,6 +162,7 @@ Allowed categories:
 - material
 - silhouette
 - fit
+- pattern
 - detail
 - item
 
@@ -169,6 +170,7 @@ Examples:
 - color:black
 - color:cream
 - material:velvet
+- pattern:animal_print
 - silhouette:midi
 - fit:oversized
 - style:gothic

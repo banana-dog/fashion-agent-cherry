@@ -1,0 +1,14 @@
+[
+  {
+    "id": "relaxed_dark_01",
+    "image_url": "https://example.com/replace-with-your-relaxed-outfit.jpg",
+    "description": "Чёрный образ со свободной посадкой",
+    "attributes": ["color:black", "fit:oversized"]
+  },
+  {
+    "id": "fitted_dark_01",
+    "image_url": "https://example.com/replace-with-your-fitted-outfit.jpg",
+    "description": "Чёрный образ с прилегающей посадкой",
+    "attributes": ["color:black", "fit:fitted"]
+  }
+]

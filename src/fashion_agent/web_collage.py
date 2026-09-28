@@ -111,10 +111,10 @@ def build_collage_html(
             <figure
               class="item"
               style="
-                left:{slot['left']}px;
-                top:{slot['top']}px;
-                width:{slot['width']}px;
-                transform:rotate({slot['rotate']}deg);
+                left:{slot["left"]}px;
+                top:{slot["top"]}px;
+                width:{slot["width"]}px;
+                transform:rotate({slot["rotate"]}deg);
               "
             >
               <img src="{image_data_url}" alt="{title}">
@@ -275,7 +275,7 @@ def build_collage_html(
         <h1>Outfit collage</h1>
       </div>
       <div class="price-pill">{total_price}</div>
-      {''.join(layers)}
+      {"".join(layers)}
     </div>
   </body>
 </html>
@@ -307,11 +307,7 @@ def render_html_to_png(
 def build_outfit_collage_data_url(
     outfit: dict,
 ) -> str | None:
-    source_items = [
-        item
-        for item in outfit["items"]
-        if item.get("image_url")
-    ][:4]
+    source_items = [item for item in outfit["items"] if item.get("image_url")][:4]
 
     if not source_items:
         return None

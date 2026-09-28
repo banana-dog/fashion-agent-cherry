@@ -9,3 +9,8 @@ wheels/
 # Virtual environments
 .venv
 src/fashion_agent/.env
+data/taste.sqlite3*
+data/agent_store.sqlite3*
+data/agent_checkpoints.sqlite3*
+data/wardrobe.sqlite3*
+data/search_cache.json

@@ -38,7 +38,13 @@ class FashionState(TypedDict):
     request: dict | None
     missing_fields: list[str]
     style_preferences: list[dict]
+    client_profile: dict | None
+    retrieved_style_cards: list[dict]
+    retrieved_outfit_formulas: list[dict]
+    retrieved_trends: list[dict]
+    resolved_style: dict | None
     search_plan: list[dict]
+    search_reports: list[dict]
     products: Annotated[
         list[dict],
         merge_products,
@@ -137,9 +143,21 @@ class OutfitCritique(BaseModel):
         le=10,
     )
 
+    style_fidelity_score: float = Field(
+        ge=0,
+        le=10,
+    )
+
+    trend_relevance_score: float = Field(
+        ge=0,
+        le=10,
+    )
+
     explanation: str
 
     issues: list[str] = Field(default_factory=list)
+    applied_knowledge_ids: list[str] = Field(default_factory=list)
+    violated_knowledge_ids: list[str] = Field(default_factory=list)
 
 
 class OutfitCritiqueBatch(BaseModel):

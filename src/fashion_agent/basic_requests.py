@@ -1,24 +1,18 @@
-
 import json
 from typing import Literal
-from src.fashion_agent.llm import llm
-from src.fashion_agent.states import FashionState, StylingRequest
+
 from langchain_core.messages import (
     AIMessage,
     SystemMessage,
 )
-    
 
+from src.fashion_agent.llm import llm
+from src.fashion_agent.states import FashionState, StylingRequest
 
 QUESTION_MAP = {
-    "occasion":
-        "Куда или для какого сценария собираем образ?",
-
-    "budget":
-        "Какой максимальный бюджет закладываем на образ?",
-
-    "location":
-        "В какой стране или городе искать вещи?",
+    "occasion": "Куда или для какого сценария собираем образ?",
+    "budget": "Какой максимальный бюджет закладываем на образ?",
+    "location": "В какой стране или городе искать вещи?",
 }
 
 
@@ -26,6 +20,7 @@ request_extractor = llm.with_structured_output(
     StylingRequest,
     method="function_calling",
 )
+
 
 def extract_request(state: FashionState):
     prompt = SystemMessage(
@@ -52,57 +47,50 @@ Rules:
 """
     )
 
-    request = request_extractor.invoke(
-        [prompt, *state["messages"]]
-    )
+    request = request_extractor.invoke([prompt, *state["messages"]])
 
     missing_fields = []
 
-    if request.task == "build_outfit": # type: ignore
-        if request.occasion is None: # type: ignore
-            missing_fields.append("occasion")
+    if request.task == "build_outfit" and request.occasion is None:  # type: ignore
+        missing_fields.append("occasion")
 
-    if request.budget_max is None: # type: ignore
+    if request.budget_max is None:  # type: ignore
         missing_fields.append("budget")
 
-    if request.location is None: # type: ignore
+    if request.location is None:  # type: ignore
         missing_fields.append("location")
 
     return {
-        "request": request.model_dump(), # type: ignore
+        "request": request.model_dump(),  # type: ignore
         "missing_fields": missing_fields,
     }
-    
+
+
 def route_after_extraction(
     state: FashionState,
 ) -> Literal[
     "ask_questions",
-    "create_search_plan",
+    "retrieve_style_knowledge",
 ]:
     if state["missing_fields"]:
         return "ask_questions"
 
-    return "create_search_plan"
+    return "retrieve_style_knowledge"
+
 
 def ask_questions(state: FashionState):
     missing = state["missing_fields"][:2]
 
-    questions = [
-        QUESTION_MAP[field]
-        for field in missing
-    ]
+    questions = [QUESTION_MAP[field] for field in missing]
 
     text = "Мне нужно уточнить пару вещей:\n"
 
     for i, question in enumerate(questions, start=1):
         text += f"\n{i}. {question}"
 
-    return {
-        "messages": [
-            AIMessage(content=text)
-        ]
-    }
-    
+    return {"messages": [AIMessage(content=text)]}
+
+
 def format_style_profile(
     preferences: list[dict],
 ) -> str:
@@ -120,17 +108,12 @@ def format_style_profile(
     for preference in preferences:
         icon = icons[preference["polarity"]]
 
-        target = (
-            preference["target"]
-            .replace("_", " ")
-        )
+        target = preference["target"].replace("_", " ")
 
-        lines.append(
-            f"{icon} {target} "
-            f"({preference['strength']})"
-        )
+        lines.append(f"{icon} {target} ({preference['strength']})")
 
     return "\n".join(lines)
+
 
 def ready(state: FashionState):
     request = state["request"]
@@ -141,9 +124,7 @@ def ready(state: FashionState):
         ensure_ascii=False,
     )
 
-    style = format_style_profile(
-        state["style_preferences"]
-    )
+    style = format_style_profile(state["style_preferences"])
 
     return {
         "messages": [
@@ -159,4 +140,3 @@ def ready(state: FashionState):
             )
         ]
     }
-    

@@ -1,0 +1,187 @@
+[
+  {
+    "id": "formula:y2k_casual_001",
+    "name": "Casual modern Y2K",
+    "styles": ["y2k"],
+    "occasions": ["casual", "park", "casual_walk"],
+    "seasons": ["spring", "summer"],
+    "items": [
+      {"category": "top", "preferred_attributes": ["fit:fitted"], "required": true},
+      {"category": "bottom", "preferred_attributes": ["material:denim"], "required": true},
+      {"category": "shoes", "preferred_attributes": ["detail:metallic"], "required": true},
+      {"category": "bag", "preferred_attributes": ["detail:mini_bag"], "required": false}
+    ],
+    "balance_rules": ["Use one nostalgic accent and keep the rest streamlined.", "A fitted top works best with a cleaner denim base."],
+    "avoid": ["Do not make every item novelty-driven."],
+    "formality_min": 0.2,
+    "formality_max": 0.45
+  },
+  {
+    "id": "formula:mob_wife_casual_001",
+    "name": "Restrained mob wife casual",
+    "styles": ["mob_wife"],
+    "occasions": ["casual", "park", "date"],
+    "seasons": ["autumn", "spring", "winter"],
+    "items": [
+      {"category": "top", "preferred_attributes": ["fit:fitted", "color:black"], "required": true},
+      {"category": "bottom", "preferred_attributes": ["style:structured"], "required": true},
+      {"category": "shoes", "preferred_attributes": ["color:black", "detail:structured"], "required": true},
+      {"category": "outerwear", "preferred_attributes": ["material:faux_fur"], "required": false}
+    ],
+    "balance_rules": ["Use one dominant statement item.", "Balance voluminous outerwear with a fitted base."],
+    "avoid": ["Do not stack faux fur, animal print and flashy accessories together for a daytime setting."],
+    "formality_min": 0.25,
+    "formality_max": 0.6
+  },
+  {
+    "id": "formula:coquette_soft_day_001",
+    "name": "Soft coquette daytime",
+    "styles": ["coquette", "balletcore"],
+    "occasions": ["casual", "park", "date"],
+    "seasons": ["spring", "summer"],
+    "items": [
+      {"category": "top", "preferred_attributes": ["material:lace", "style:romantic"], "required": true},
+      {"category": "bottom", "preferred_attributes": ["color:cream"], "required": true},
+      {"category": "shoes", "preferred_attributes": ["detail:ribbons"], "required": true},
+      {"category": "bag", "preferred_attributes": ["color:pink"], "required": false}
+    ],
+    "balance_rules": ["Use no more than two overtly sweet details.", "Anchor softness with a clear silhouette."],
+    "avoid": ["Do not make every item frilly."],
+    "formality_min": 0.2,
+    "formality_max": 0.55
+  },
+  {
+    "id": "formula:office_siren_sharp_001",
+    "name": "Sharp office siren base",
+    "styles": ["office_siren", "old_money"],
+    "occasions": ["office", "date", "theatre"],
+    "seasons": ["autumn", "winter", "spring"],
+    "items": [
+      {"category": "top", "preferred_attributes": ["fit:fitted", "style:elegant"], "required": true},
+      {"category": "bottom", "preferred_attributes": ["silhouette:midi"], "required": true},
+      {"category": "shoes", "preferred_attributes": ["detail:structured"], "required": true},
+      {"category": "outerwear", "preferred_attributes": ["style:structured"], "required": false}
+    ],
+    "balance_rules": ["Keep the line sleek rather than overly revealing.", "Structured shoes and tailoring sharpen the sensual base."],
+    "avoid": ["Do not let the outfit drift into clubwear."],
+    "formality_min": 0.45,
+    "formality_max": 0.85
+  },
+  {
+    "id": "formula:dark_academia_layered_001",
+    "name": "Layered dark academia",
+    "styles": ["dark_academia"],
+    "occasions": ["casual", "date", "theatre"],
+    "seasons": ["autumn", "winter", "spring"],
+    "items": [
+      {"category": "top", "preferred_attributes": ["material:wool"], "required": true},
+      {"category": "bottom", "preferred_attributes": ["pattern:plaid"], "required": true},
+      {"category": "shoes", "preferred_attributes": ["style:structured"], "required": true},
+      {"category": "outerwear", "preferred_attributes": ["color:brown"], "required": false}
+    ],
+    "balance_rules": ["Layer texture, not random decoration.", "Muted structure keeps the look scholarly instead of costume-like."],
+    "avoid": ["Do not stack too many literal school references."],
+    "formality_min": 0.35,
+    "formality_max": 0.75
+  },
+  {
+    "id": "formula:old_money_refined_001",
+    "name": "Refined old money separates",
+    "styles": ["old_money", "clean_girl"],
+    "occasions": ["casual", "date", "theatre"],
+    "seasons": ["spring", "summer", "autumn"],
+    "items": [
+      {"category": "top", "preferred_attributes": ["style:elegant", "color:cream"], "required": true},
+      {"category": "bottom", "preferred_attributes": ["style:structured"], "required": true},
+      {"category": "shoes", "preferred_attributes": ["detail:structured"], "required": true},
+      {"category": "bag", "preferred_attributes": ["detail:structured"], "required": false}
+    ],
+    "balance_rules": ["Restraint and polish should lead.", "One subtle luxury detail is enough."],
+    "avoid": ["Avoid obvious logos and noisy accents."],
+    "formality_min": 0.35,
+    "formality_max": 0.8
+  },
+  {
+    "id": "formula:gothic_evening_001",
+    "name": "Textural gothic evening",
+    "styles": ["gothic", "romantic_goth"],
+    "occasions": ["date", "theatre", "evening"],
+    "seasons": ["autumn", "winter", "spring"],
+    "items": [
+      {"category": "dress", "preferred_attributes": ["color:black", "material:velvet"], "required": true},
+      {"category": "shoes", "preferred_attributes": ["detail:structured"], "required": true},
+      {"category": "bag", "preferred_attributes": ["color:black"], "required": false}
+    ],
+    "balance_rules": ["Use texture contrast to keep black looks dimensional.", "A calmer accessory prevents costume effect."],
+    "avoid": ["Do not overload the look with every gothic cue at once."],
+    "formality_min": 0.45,
+    "formality_max": 0.9
+  },
+  {
+    "id": "formula:romantic_goth_day_001",
+    "name": "Romantic goth daytime blend",
+    "styles": ["romantic_goth", "gothic", "coquette"],
+    "occasions": ["casual", "park", "date"],
+    "seasons": ["spring", "autumn", "summer"],
+    "items": [
+      {"category": "top", "preferred_attributes": ["material:lace", "color:black"], "required": true},
+      {"category": "bottom", "preferred_attributes": ["style:romantic"], "required": true},
+      {"category": "shoes", "preferred_attributes": ["detail:structured"], "required": true},
+      {"category": "bag", "preferred_attributes": ["color:black"], "required": false}
+    ],
+    "balance_rules": ["Keep one grounded or structured element in the outfit.", "Use softness as a filter over a dark base."],
+    "avoid": ["Do not make the look too sugary or too theatrical."],
+    "formality_min": 0.25,
+    "formality_max": 0.65
+  },
+  {
+    "id": "formula:clean_girl_polished_001",
+    "name": "Polished clean girl",
+    "styles": ["clean_girl", "old_money"],
+    "occasions": ["casual", "park", "office"],
+    "seasons": ["spring", "summer", "autumn"],
+    "items": [
+      {"category": "top", "preferred_attributes": ["style:minimal"], "required": true},
+      {"category": "bottom", "preferred_attributes": ["style:structured"], "required": true},
+      {"category": "shoes", "preferred_attributes": ["color:white"], "required": true},
+      {"category": "bag", "preferred_attributes": ["detail:structured"], "required": false}
+    ],
+    "balance_rules": ["Keep the palette calm and proportions polished.", "One sleek accessory is enough for finish."],
+    "avoid": ["Avoid random sporty or hyper-romantic inserts."],
+    "formality_min": 0.2,
+    "formality_max": 0.55
+  },
+  {
+    "id": "formula:balletcore_soft_001",
+    "name": "Soft balletcore blend",
+    "styles": ["balletcore", "coquette"],
+    "occasions": ["casual", "date", "theatre"],
+    "seasons": ["spring", "summer"],
+    "items": [
+      {"category": "top", "preferred_attributes": ["fit:fitted", "style:romantic"], "required": true},
+      {"category": "bottom", "preferred_attributes": ["color:cream"], "required": true},
+      {"category": "shoes", "preferred_attributes": ["detail:ribbons"], "required": true},
+      {"category": "accessory", "preferred_attributes": ["color:pink"], "required": false}
+    ],
+    "balance_rules": ["Use only one obvious dancewear cue.", "Keep the rest soft and polished rather than costume-like."],
+    "avoid": ["Do not stack tulle, legwarmers and bows all together."],
+    "formality_min": 0.2,
+    "formality_max": 0.6
+  },
+  {
+    "id": "formula:dark_romantic_theatre_001",
+    "name": "Dark romantic theatre look",
+    "styles": ["romantic_goth", "dark_academia", "gothic"],
+    "occasions": ["theatre", "date", "evening"],
+    "seasons": ["autumn", "winter", "spring"],
+    "items": [
+      {"category": "dress", "preferred_attributes": ["material:lace", "silhouette:midi"], "required": true},
+      {"category": "shoes", "preferred_attributes": ["detail:structured"], "required": true},
+      {"category": "outerwear", "preferred_attributes": ["material:velvet"], "required": false}
+    ],
+    "balance_rules": ["Rich texture should feel intentional, not heavy-handed.", "A refined shoe keeps the look modern."],
+    "avoid": ["Do not let all the drama sit at the same intensity level."],
+    "formality_min": 0.5,
+    "formality_max": 0.95
+  }
+]

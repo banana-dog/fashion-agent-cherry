@@ -1,0 +1,1292 @@
+[
+  {
+    "id": "outfit_001",
+    "image_path": "outfit_cards/#Iconic_Divas #fashion #officestyle #fyp.jpeg",
+    "description": "Белая свободная рубашка поверх чёрного кружевного топа, широкие чёрные брюки с отворотами и босоножки на высоком каблуке. Образ дополнен чёрной сумкой и серебристыми украшениями.",
+    "attributes": [
+      "color:white",
+      "color:black",
+      "fit:relaxed",
+      "fit:wide_leg",
+      "material:lace",
+      "detail:layering",
+      "item:shirt",
+      "item:trousers",
+      "item:heeled_sandals",
+      "style:elegant"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_002",
+    "image_path": "outfit_cards/#foryou#outfits.jpeg",
+    "description": "Белый топ с драпировкой у груди и синяя расклешённая юбка миди с асимметричными швами. Бордовые мюли и сумка сочетаются с золотистыми серьгами.",
+    "attributes": [
+      "color:white",
+      "color:blue",
+      "color:burgundy",
+      "silhouette:midi",
+      "silhouette:flared",
+      "detail:draping",
+      "item:skirt",
+      "item:mules",
+      "style:romantic"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_003",
+    "image_path": "outfit_cards/#foryoupage.jpeg",
+    "description": "Приталенный разноцветный жилет с острыми краями и открытыми плечами сочетается с широкими синими джинсами. Бордовые кроссовки и округлая сумка поддерживают цвета верха.",
+    "attributes": [
+      "color:blue",
+      "color:burgundy",
+      "pattern:color_block",
+      "fit:wide_leg",
+      "material:denim",
+      "item:vest",
+      "item:jeans",
+      "item:sneakers",
+      "style:eclectic"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_004",
+    "image_path": "outfit_cards/#oldmoney #outfit #foryou.jpeg",
+    "description": "Чёрный топ без бретелей и широкие блестящие чёрные брюки с бордовой укороченной курткой. Бордовые босоножки и небольшая сумка, золотистые украшения.",
+    "attributes": [
+      "color:black",
+      "color:burgundy",
+      "fit:wide_leg",
+      "detail:strapless",
+      "detail:cropped",
+      "detail:glossy_finish",
+      "item:jacket",
+      "item:trousers",
+      "item:heeled_sandals",
+      "style:elegant"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_005",
+    "image_path": "outfit_cards/@style.jpeg",
+    "description": "Золотистый фактурный топ с закрытой шеей и открытыми плечами, очень широкие тёмные джинсы с фигурными вставками и необработанными краями. Золотистые босоножки и маленькая сумка усиливают декоративность образа.",
+    "attributes": [
+      "color:gold",
+      "color:blue",
+      "fit:wide_leg",
+      "material:denim",
+      "detail:halter_neck",
+      "detail:distressed",
+      "detail:metallic",
+      "item:jeans",
+      "item:heeled_sandals",
+      "style:eclectic"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_006",
+    "image_path": "outfit_cards/Amazon -(1).jpeg",
+    "description": "Цветочный топ с открытыми плечами и длинными расклешёнными рукавами, коричневая юбка миди со складками и поясом. Коричневая сумка на цепочке и тонкие босоножки на каблуке.",
+    "attributes": [
+      "color:brown",
+      "pattern:floral",
+      "silhouette:midi",
+      "silhouette:flared",
+      "detail:off_shoulder",
+      "detail:bell_sleeves",
+      "item:skirt",
+      "item:heeled_sandals",
+      "style:boho"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_008",
+    "image_path": "outfit_cards/Pucci styling.jpeg",
+    "description": "Топ без рукавов с ярким волнистым разноцветным принтом, бордовая мини-юбка с широким поясом и высокие бордовые сапоги. Белая округлая сумка создаёт светлый акцент.",
+    "attributes": [
+      "color:burgundy",
+      "color:white",
+      "pattern:abstract",
+      "silhouette:mini",
+      "detail:wide_belt",
+      "item:skirt",
+      "item:knee_high_boots",
+      "style:eclectic"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_009",
+    "image_path": "outfit_cards/Sage Green Floral Maxi Skirt Outfit _ Romantic Summer Look.jpeg",
+    "description": "Светло-зелёный топ с драпировкой и завязкой на шее сочетается с длинной цветочной юбкой со сборкой сбоку. Тонкие зелёные босоножки и золотистые украшения завершают романтичный образ.",
+    "attributes": [
+      "color:green",
+      "pattern:floral",
+      "silhouette:maxi",
+      "detail:halter_neck",
+      "detail:draping",
+      "item:skirt",
+      "item:heeled_sandals",
+      "style:romantic"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_010",
+    "image_path": "outfit_cards/classic.jpeg",
+    "description": "Длинный оливковый асимметричный верх с высоким воротником и свободной драпировкой, широкие чёрные брюки. Чёрная структурная сумка и босоножки на каблуке.",
+    "attributes": [
+      "color:olive",
+      "color:black",
+      "fit:relaxed",
+      "fit:wide_leg",
+      "detail:asymmetric",
+      "detail:high_neck",
+      "detail:draping",
+      "item:trousers",
+      "item:heeled_sandals",
+      "style:elegant"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_011",
+    "image_path": "outfit_cards/jpeg(4)",
+    "description": "Золотистый укороченный верх с очень широкими рукавами поверх чёрного топа-бандо, широкие чёрные брюки с крупным рисунком солнца. Чёрные остроносые туфли и золотистые серьги-солнца.",
+    "attributes": [
+      "color:gold",
+      "color:black",
+      "fit:wide_leg",
+      "pattern:graphic",
+      "detail:bell_sleeves",
+      "detail:cropped",
+      "item:trousers",
+      "item:pumps",
+      "style:eclectic"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_012",
+    "image_path": "outfit_cards/jpeg(5)",
+    "description": "Приталенный бордовый жакет с баской и широкие бордовые брюки. Оливковые туфли-лодочки, небольшая структурная сумка и золотистые украшения создают контрастные акценты.",
+    "attributes": [
+      "color:burgundy",
+      "color:olive",
+      "fit:fitted",
+      "fit:wide_leg",
+      "detail:peplum",
+      "item:blazer",
+      "item:trousers",
+      "item:pumps",
+      "style:elegant"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_013",
+    "image_path": "outfit_cards/jpeg(6)",
+    "description": "Светлый блестящий топ на тонких завязках с драпированным вырезом и асимметричным краем, широкие тёмно-зелёные брюки с поясом. Зелёные остроносые туфли и сумка на цепочке.",
+    "attributes": [
+      "color:cream",
+      "color:green",
+      "fit:wide_leg",
+      "detail:spaghetti_straps",
+      "detail:draping",
+      "detail:asymmetric",
+      "detail:glossy_finish",
+      "item:trousers",
+      "item:pumps",
+      "style:elegant"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_014",
+    "image_path": "outfit_cards/jpeg(7)",
+    "description": "Кремовый топ с перекрёстной драпировкой и завязкой на шее, широкие тёмно-синие джинсы со складками. Небольшая сине-коричневая сумка и чёрные остроносые мюли.",
+    "attributes": [
+      "color:cream",
+      "color:blue",
+      "fit:wide_leg",
+      "material:denim",
+      "detail:halter_neck",
+      "detail:draping",
+      "item:jeans",
+      "item:mules",
+      "style:casual"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_017",
+    "image_path": "outfit_cards/jpeg(10)",
+    "description": "Серо-зелёный корсетный топ с мелким растительным рисунком и фигурным нижним краем, тёмно-синие расклешённые брюки с выраженным ворсом. Чёрные туфли на каблуке и небольшие украшения.",
+    "attributes": [
+      "color:green",
+      "color:blue",
+      "fit:fitted",
+      "silhouette:flared",
+      "pattern:floral",
+      "detail:corset",
+      "item:trousers",
+      "item:pumps",
+      "style:vintage"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_018",
+    "image_path": "outfit_cards/jpeg(11)",
+    "description": "Бежевый прилегающий трикотажный топ с широким отворотом на плечах и длинная серая юбка с асимметричным краем. Коричневые туфли с пряжками и небольшой коричневый клатч.",
+    "attributes": [
+      "color:beige",
+      "color:gray",
+      "color:brown",
+      "material:knit",
+      "detail:off_shoulder",
+      "detail:asymmetric",
+      "silhouette:maxi",
+      "item:skirt",
+      "item:loafers",
+      "style:casual"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_019",
+    "image_path": "outfit_cards/jpeg(12)",
+    "description": "Длинный чёрный ажурный верх на пуговицах с глубоким разрезом спереди поверх тёмно-синих джинсов с широкими отворотами. Чёрные туфли-лодочки и небольшая сумка.",
+    "attributes": [
+      "color:black",
+      "color:blue",
+      "material:denim",
+      "detail:sheer",
+      "detail:layering",
+      "fit:wide_leg",
+      "item:jeans",
+      "item:pumps",
+      "style:eclectic"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_020",
+    "image_path": "outfit_cards/jpeg(13)",
+    "description": "Зелёный облегающий топ на тонких бретелях с корсетными швами, широкие тёмные джинсы. Зелёная сумка на коротком ремне и коричневые босоножки на высоком каблуке.",
+    "attributes": [
+      "color:green",
+      "color:blue",
+      "color:brown",
+      "fit:fitted",
+      "fit:wide_leg",
+      "material:denim",
+      "detail:corset",
+      "detail:spaghetti_straps",
+      "item:jeans",
+      "item:heeled_sandals",
+      "style:casual"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_021",
+    "image_path": "outfit_cards/jpeg(14)",
+    "description": "Чёрное боди без рукавов с высоким воротником, укороченная тёмная куртка и объёмные серые брюки со складками. Чёрные ботильоны на высокой платформе.",
+    "attributes": [
+      "color:black",
+      "color:gray",
+      "fit:relaxed",
+      "detail:high_neck",
+      "detail:cropped",
+      "detail:platform",
+      "item:bodysuit",
+      "item:jacket",
+      "item:trousers",
+      "item:ankle_boots",
+      "style:grunge"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_022",
+    "image_path": "outfit_cards/jpeg(15)",
+    "description": "Светло-жёлтый корсетный топ с широкими бретелями и тёмные джинсы округлого объёмного кроя с контрастными швами. Коричневые босоножки и небольшая плетёная на вид сумка с бусинами.",
+    "attributes": [
+      "color:yellow",
+      "color:blue",
+      "color:brown",
+      "fit:relaxed",
+      "material:denim",
+      "detail:corset",
+      "detail:contrast_stitching",
+      "item:jeans",
+      "item:heeled_sandals",
+      "style:eclectic"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_023",
+    "image_path": "outfit_cards/jpeg(16)",
+    "description": "Короткое чёрное платье без рукавов, бордовый удлинённый жакет и бордовые кружевные колготки. Высокие бордовые сапоги и округлая сумка в тон.",
+    "attributes": [
+      "color:black",
+      "color:burgundy",
+      "silhouette:mini",
+      "material:lace",
+      "detail:layering",
+      "item:dress",
+      "item:blazer",
+      "item:tights",
+      "item:knee_high_boots",
+      "style:elegant"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_024",
+    "image_path": "outfit_cards/jpeg(17)",
+    "description": "Чёрный облегающий топ, короткая тёмная джинсовая юбка с широким ремнём и бордовая куртка-рубашка. Высокие бордовые сапоги, сумка и шейный платок в тон.",
+    "attributes": [
+      "color:black",
+      "color:burgundy",
+      "material:denim",
+      "silhouette:mini",
+      "detail:wide_belt",
+      "detail:layering",
+      "item:skirt",
+      "item:jacket",
+      "item:knee_high_boots",
+      "item:scarf",
+      "style:casual"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_025",
+    "image_path": "outfit_cards/jpeg(18)",
+    "description": "Свободная коричневая полупрозрачная блуза с оборками, короткая джинсовая юбка и широкий коричневый ремень. Высокие сапоги на каблуке с декоративными ремешками и объёмная сумка.",
+    "attributes": [
+      "color:brown",
+      "color:blue",
+      "fit:relaxed",
+      "material:denim",
+      "silhouette:mini",
+      "detail:ruffles",
+      "detail:sheer",
+      "detail:wide_belt",
+      "item:skirt",
+      "item:knee_high_boots",
+      "style:boho"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_026",
+    "image_path": "outfit_cards/jpeg(19)",
+    "description": "Белая прилегающая футболка, серый кардиган и широкие серые брюки со складками. Бордовая структурная сумка и бордовые туфли на каблуке и платформе.",
+    "attributes": [
+      "color:white",
+      "color:gray",
+      "color:burgundy",
+      "fit:wide_leg",
+      "material:knit",
+      "detail:layering",
+      "item:t_shirt",
+      "item:cardigan",
+      "item:trousers",
+      "item:pumps",
+      "style:elegant"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_027",
+    "image_path": "outfit_cards/jpeg(20)",
+    "description": "Свободный кремовый свитер с крупным изображением кота и надписью, тёмные джинсы с отворотами. Бордовый шарф и балетки, светлые носки и большая коричневая сумка.",
+    "attributes": [
+      "color:cream",
+      "color:blue",
+      "color:burgundy",
+      "material:knit",
+      "material:denim",
+      "fit:relaxed",
+      "pattern:graphic",
+      "item:sweater",
+      "item:jeans",
+      "item:ballet_flats",
+      "item:scarf",
+      "style:casual"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_028",
+    "image_path": "outfit_cards/jpeg(21)",
+    "description": "Свободный ярко-зелёный свитер, широкие тёмно-синие брюки в тонкую вертикальную полоску и светлые кроссовки с бордовыми деталями. Образ дополнен очками и крупными серьгами.",
+    "attributes": [
+      "color:green",
+      "color:navy",
+      "fit:relaxed",
+      "fit:wide_leg",
+      "material:knit",
+      "pattern:striped",
+      "item:sweater",
+      "item:trousers",
+      "item:sneakers",
+      "style:casual"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_029",
+    "image_path": "outfit_cards/jpeg(22)",
+    "description": "Свободная кремовая футболка с ярким рисунком, короткие полосатые шорты и красные высокие сапоги с пряжками и звёздами. Разноцветная ажурная сумка на длинном ремне.",
+    "attributes": [
+      "color:cream",
+      "color:red",
+      "pattern:graphic",
+      "pattern:striped",
+      "fit:relaxed",
+      "detail:buckles",
+      "item:t_shirt",
+      "item:shorts",
+      "item:knee_high_boots",
+      "style:eclectic"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_030",
+    "image_path": "outfit_cards/jpeg(23)",
+    "description": "Кремовая укороченная куртка с объёмными рукавами, коричневый топ с высоким воротником и бежевые широкие брюки с декоративными ажурными вставками по бокам. Белые ботильоны на каблуке и светлая структурная сумка.",
+    "attributes": [
+      "color:cream",
+      "color:brown",
+      "color:beige",
+      "fit:wide_leg",
+      "detail:cropped",
+      "detail:high_neck",
+      "detail:cutouts",
+      "item:jacket",
+      "item:trousers",
+      "item:ankle_boots",
+      "style:elegant"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_031",
+    "image_path": "outfit_cards/jpeg(24)",
+    "description": "Тёмно-зелёный корсетный верх с пышными рукавами, светлыми оборками и цепочками, кремовая мини-юбка с декоративным узором. Зелёные туфли с ремешком, украшенная сумка и жемчужные украшения создают театральный образ.",
+    "attributes": [
+      "color:green",
+      "color:cream",
+      "silhouette:mini",
+      "detail:corset",
+      "detail:puff_sleeves",
+      "detail:ruffles",
+      "detail:chains",
+      "item:skirt",
+      "item:mary_janes",
+      "style:vintage"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_032",
+    "image_path": "outfit_cards/jpeg(25)",
+    "description": "Бордовый клетчатый корсетный топ без бретелей и длинные бордовые брюки с расширением книзу. Бордовые туфли с ремешками на массивной платформе и коричневая сумка.",
+    "attributes": [
+      "color:burgundy",
+      "color:brown",
+      "pattern:plaid",
+      "silhouette:flared",
+      "detail:corset",
+      "detail:strapless",
+      "detail:platform",
+      "item:trousers",
+      "item:mary_janes",
+      "style:vintage"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_033",
+    "image_path": "outfit_cards/jpeg(26)",
+    "description": "Кремовая блуза с драпированным вырезом и расклешёнными рукавами, широкие оливково-зелёные брюки. Зелёный клатч и золотистые остроносые туфли.",
+    "attributes": [
+      "color:cream",
+      "color:olive",
+      "color:gold",
+      "fit:wide_leg",
+      "detail:draping",
+      "detail:bell_sleeves",
+      "item:blouse",
+      "item:trousers",
+      "item:pumps",
+      "style:elegant"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_034",
+    "image_path": "outfit_cards/jpeg(27)",
+    "description": "Серо-коричневый корсет с фигурным краем, чёрная длинная пышная юбка со складками и двухцветные туфли с ремешками. Крупное ожерелье с подвесками добавляет винтажный акцент.",
+    "attributes": [
+      "color:gray",
+      "color:black",
+      "color:brown",
+      "silhouette:maxi",
+      "silhouette:flared",
+      "detail:corset",
+      "detail:pleated",
+      "detail:statement_jewelry",
+      "item:skirt",
+      "item:pumps",
+      "style:vintage"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_035",
+    "image_path": "outfit_cards/jpeg(28)",
+    "description": "Полупрозрачная чёрная блуза с короткими рукавами и длинной завязкой у шеи поверх чёрного кружевного белья, широкие чёрные брюки. Высокие чёрные сапоги и строгая прямоугольная сумка.",
+    "attributes": [
+      "color:black",
+      "fit:wide_leg",
+      "material:lace",
+      "detail:sheer",
+      "detail:layering",
+      "detail:neck_tie",
+      "item:blouse",
+      "item:trousers",
+      "item:knee_high_boots",
+      "style:elegant"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_036",
+    "image_path": "outfit_cards/jpeg(29)",
+    "description": "Бежевый прилегающий топ с длинными расклешёнными рукавами и драпированным воротом, чёрная мини-юбка с контрастными светлыми линиями и асимметричным запахом. Высокие чёрные сапоги и стёганая сумка на цепочке.",
+    "attributes": [
+      "color:beige",
+      "color:black",
+      "silhouette:mini",
+      "pattern:geometric",
+      "detail:bell_sleeves",
+      "detail:asymmetric",
+      "item:skirt",
+      "item:knee_high_boots",
+      "style:elegant"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_037",
+    "image_path": "outfit_cards/jpeg(30)",
+    "description": "Светлый серо-зелёный свободный топ с высоким воротником и асимметричным краем, широкие серые брюки со складками. Чёрные кружевные туфли-лодочки и глянцевая чёрная сумка.",
+    "attributes": [
+      "color:gray",
+      "color:green",
+      "color:black",
+      "fit:wide_leg",
+      "detail:high_neck",
+      "detail:asymmetric",
+      "detail:draping",
+      "material:lace",
+      "item:trousers",
+      "item:pumps",
+      "style:elegant"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_038",
+    "image_path": "outfit_cards/jpeg(31)",
+    "description": "Серый приталенный топ без бретелей и длинная кремовая юбка, расширяющаяся к подолу. Небольшой светлый клатч и остроносые туфли с декоративным узором.",
+    "attributes": [
+      "color:gray",
+      "color:cream",
+      "fit:fitted",
+      "silhouette:maxi",
+      "silhouette:flared",
+      "detail:strapless",
+      "item:skirt",
+      "item:pumps",
+      "style:elegant"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_039",
+    "image_path": "outfit_cards/jpeg(32)",
+    "description": "Бордовый кружевной корсетный топ, укороченная голубая джинсовая куртка и широкие светлые джинсы с завязками-бантами. Бордовая сумка с бантом и остроносые туфли.",
+    "attributes": [
+      "color:burgundy",
+      "color:blue",
+      "material:lace",
+      "material:denim",
+      "fit:wide_leg",
+      "detail:corset",
+      "detail:ribbons",
+      "detail:cropped",
+      "item:jeans",
+      "item:jacket",
+      "item:pumps",
+      "style:romantic"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_040",
+    "image_path": "outfit_cards/jpeg(33)",
+    "description": "Кремовый укороченный джемпер с объёмными рукавами и длинная розовая юбка с разрезом и контрастной отделкой. Кремовые ботильоны на каблуке и небольшая разноцветная сумка.",
+    "attributes": [
+      "color:cream",
+      "color:pink",
+      "silhouette:maxi",
+      "material:knit",
+      "detail:cropped",
+      "detail:puff_sleeves",
+      "detail:slit",
+      "item:sweater",
+      "item:skirt",
+      "item:ankle_boots",
+      "style:eclectic"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_041",
+    "image_path": "outfit_cards/jpeg(34)",
+    "description": "Чёрный укороченный топ с воротником и длинная светло-синяя джинсовая юбка с крупными прорезями, бахромой и высоким разрезом. Чёрные ботильоны на каблуке и маленькая сумка.",
+    "attributes": [
+      "color:black",
+      "color:blue",
+      "material:denim",
+      "silhouette:maxi",
+      "detail:cropped",
+      "detail:distressed",
+      "detail:slit",
+      "item:skirt",
+      "item:ankle_boots",
+      "style:grunge"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_042",
+    "image_path": "outfit_cards/jpeg(35)",
+    "description": "Тёмно-синий облегающий спортивный топ со светлой окантовкой и очень широкие спортивные брюки с боковыми полосами. Бело-серые массивные кроссовки.",
+    "attributes": [
+      "color:navy",
+      "color:white",
+      "fit:wide_leg",
+      "detail:side_stripes",
+      "item:tank_top",
+      "item:track_pants",
+      "item:sneakers",
+      "style:sporty"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_043",
+    "image_path": "outfit_cards/jpeg(36)",
+    "description": "Свободная чёрная футболка с крупным музыкальным принтом и длинная рваная джинсовая юбка с высоким разрезом. Чёрные высокие кеды и небольшая чёрная сумка.",
+    "attributes": [
+      "color:black",
+      "color:blue",
+      "fit:relaxed",
+      "material:denim",
+      "silhouette:maxi",
+      "pattern:graphic",
+      "detail:distressed",
+      "detail:slit",
+      "item:t_shirt",
+      "item:skirt",
+      "item:sneakers",
+      "style:grunge"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_045",
+    "image_path": "outfit_cards/jpeg(38)",
+    "description": "Красный топ на одно плечо со сборками и широкие кремовые брюки с разноцветными цветочными мотивами. Красные туфли с ремешками и небольшая пёстрая сумка.",
+    "attributes": [
+      "color:red",
+      "color:cream",
+      "fit:wide_leg",
+      "pattern:floral",
+      "detail:one_shoulder",
+      "detail:draping",
+      "item:trousers",
+      "item:mary_janes",
+      "style:eclectic"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_046",
+    "image_path": "outfit_cards/jpeg(39)",
+    "description": "Серо-коричневый корсет с баской и пышная длинная юбка в крупную приглушённую клетку. Коричневые высокие сапоги, прямоугольная сумка и массивные браслеты.",
+    "attributes": [
+      "color:brown",
+      "color:gray",
+      "pattern:plaid",
+      "silhouette:maxi",
+      "silhouette:flared",
+      "detail:corset",
+      "detail:peplum",
+      "item:skirt",
+      "item:knee_high_boots",
+      "style:vintage"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_048",
+    "image_path": "outfit_cards/jpeg(41)",
+    "description": "Белый прилегающий топ без рукавов в тонкую чёрную полоску и широкие тёмные джинсы. Чёрные остроносые туфли с ремешками и большая чёрная сумка.",
+    "attributes": [
+      "color:white",
+      "color:black",
+      "pattern:striped",
+      "material:denim",
+      "fit:fitted",
+      "fit:wide_leg",
+      "item:jeans",
+      "item:pumps",
+      "style:elegant"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_049",
+    "image_path": "outfit_cards/jpeg(42)",
+    "description": "Кремовая водолазка и свободный светлый кардиган, длинная коричневая юбка с асимметричным воланом. Кремовые ботильоны на устойчивом каблуке и небольшая коричневая сумка.",
+    "attributes": [
+      "color:cream",
+      "color:brown",
+      "material:knit",
+      "silhouette:maxi",
+      "detail:high_neck",
+      "detail:layering",
+      "detail:ruffles",
+      "item:cardigan",
+      "item:skirt",
+      "item:ankle_boots",
+      "style:romantic"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_050",
+    "image_path": "outfit_cards/jpeg(43)",
+    "description": "Золотистый укороченный топ с очень широкими рукавами и короткая юбка с крупным цветочным рисунком в тёплых оттенках. Коричневые босоножки на высоком каблуке и золотистые украшения.",
+    "attributes": [
+      "color:gold",
+      "color:orange",
+      "color:brown",
+      "pattern:floral",
+      "silhouette:mini",
+      "detail:cropped",
+      "detail:bell_sleeves",
+      "item:skirt",
+      "item:heeled_sandals",
+      "style:boho"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_054",
+    "image_path": "outfit_cards/jpeg(47)",
+    "description": "Бежевый трикотажный топ без рукавов с высоким воротником и прямая длинная джинсовая юбка. Коричневые сапоги на каблуке и округлая коричневая сумка.",
+    "attributes": [
+      "color:beige",
+      "color:blue",
+      "color:brown",
+      "material:knit",
+      "material:denim",
+      "silhouette:maxi",
+      "detail:high_neck",
+      "item:skirt",
+      "item:knee_high_boots",
+      "style:casual"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_055",
+    "image_path": "outfit_cards/jpeg(48)",
+    "description": "Серая прилегающая футболка и длинная светло-серая клетчатая юбка с запахом и завязками. Синяя структурная сумка, тёмно-синие туфли с ремешками и голубые украшения.",
+    "attributes": [
+      "color:gray",
+      "color:blue",
+      "pattern:plaid",
+      "silhouette:maxi",
+      "detail:wrap",
+      "item:t_shirt",
+      "item:skirt",
+      "item:mary_janes",
+      "style:casual"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_056",
+    "image_path": "outfit_cards/jpeg(49)",
+    "description": "Оливковый приталенный жилет с завязками и широкие светлые брюки с разноцветными рисунками. Блестящая зелёная сумка и светлые остроносые туфли.",
+    "attributes": [
+      "color:olive",
+      "color:cream",
+      "fit:fitted",
+      "fit:wide_leg",
+      "pattern:graphic",
+      "detail:ribbons",
+      "item:vest",
+      "item:trousers",
+      "item:pumps",
+      "style:eclectic"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_057",
+    "image_path": "outfit_cards/jpeg(50)",
+    "description": "Чёрный приталенный топ без рукавов и длинная бордовая юбка с мягкими сборками. Чёрные высокие сапоги, маленькая чёрная сумка и веер в форме цветка.",
+    "attributes": [
+      "color:black",
+      "color:burgundy",
+      "fit:fitted",
+      "silhouette:maxi",
+      "detail:draping",
+      "item:skirt",
+      "item:knee_high_boots",
+      "style:elegant"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_058",
+    "image_path": "outfit_cards/jpeg(51)",
+    "description": "Кремовый приталенный жилет с джинсовым воротником и планкой, короткая синяя джинсовая юбка. Босоножки на толстой платформе и сине-коричневая сумка на плечо.",
+    "attributes": [
+      "color:cream",
+      "color:blue",
+      "color:brown",
+      "material:denim",
+      "silhouette:mini",
+      "detail:contrast_trim",
+      "detail:platform",
+      "item:vest",
+      "item:skirt",
+      "item:heeled_sandals",
+      "style:casual"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_059",
+    "image_path": "outfit_cards/jpeg(52)",
+    "description": "Короткое облегающее платье с леопардовым принтом, высоким воротником и сборкой сбоку. Чёрные высокие сапоги на каблуке, берет и сумка в форме сердца.",
+    "attributes": [
+      "color:brown",
+      "color:black",
+      "pattern:animal_print",
+      "fit:fitted",
+      "silhouette:mini",
+      "detail:high_neck",
+      "detail:draping",
+      "item:dress",
+      "item:knee_high_boots",
+      "item:beret",
+      "style:vintage"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_060",
+    "image_path": "outfit_cards/jpeg(53)",
+    "description": "Тёмно-серая облегающая спортивная футболка и свободные чёрные шорты на резинке. Серые кроссовки с высокими светлыми носками.",
+    "attributes": [
+      "color:gray",
+      "color:black",
+      "fit:fitted",
+      "fit:relaxed",
+      "item:t_shirt",
+      "item:shorts",
+      "item:sneakers",
+      "item:socks",
+      "style:sporty"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_061",
+    "image_path": "outfit_cards/jpeg(54)",
+    "description": "Свободный серый джемпер с крупным чёрным графическим рисунком и длинная серая джинсовая юбка с асимметричным разрезом. Чёрная сумка с металлическими деталями и туфли с пряжками.",
+    "attributes": [
+      "color:gray",
+      "color:black",
+      "material:knit",
+      "material:denim",
+      "fit:relaxed",
+      "silhouette:maxi",
+      "pattern:graphic",
+      "detail:slit",
+      "item:sweater",
+      "item:skirt",
+      "item:loafers",
+      "style:grunge"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_062",
+    "image_path": "outfit_cards/jpeg(55)",
+    "description": "Бордовый топ с открытыми плечами, высоким воротником и золотистой отделкой сочетается с объёмными тёмными джинсами округлого кроя. Золотистый ремень, массивные украшения и босоножки.",
+    "attributes": [
+      "color:burgundy",
+      "color:gold",
+      "color:blue",
+      "material:denim",
+      "fit:relaxed",
+      "detail:halter_neck",
+      "detail:metallic",
+      "detail:statement_jewelry",
+      "item:jeans",
+      "item:heeled_sandals",
+      "style:eclectic"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_064",
+    "image_path": "outfit_cards/jpeg(57)",
+    "description": "Лиловый облегающий короткий комбинезон на тонких бретелях и свободная серая спортивная куртка на молнии с цветными полосами. Высокие носки с рисунками и массивные кроссовки в серо-лиловой гамме.",
+    "attributes": [
+      "color:purple",
+      "color:gray",
+      "fit:fitted",
+      "fit:relaxed",
+      "detail:spaghetti_straps",
+      "detail:side_stripes",
+      "detail:layering",
+      "item:playsuit",
+      "item:track_jacket",
+      "item:socks",
+      "item:sneakers",
+      "style:sporty"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_065",
+    "image_path": "outfit_cards/jpeg(58)",
+    "description": "Свободный красный свитер с изображением стрекозы, очень широкие зелёные клетчатые брюки и объёмная серая куртка. Зелёная сумка с карманами и светлая обувь на плоской подошве.",
+    "attributes": [
+      "color:red",
+      "color:green",
+      "color:gray",
+      "material:knit",
+      "fit:oversized",
+      "fit:wide_leg",
+      "pattern:graphic",
+      "pattern:plaid",
+      "item:sweater",
+      "item:trousers",
+      "item:jacket",
+      "style:eclectic"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_066",
+    "image_path": "outfit_cards/jpeg(59)",
+    "description": "Кремовая футболка с надписью и рисунком кофейной посуды, широкие синие джинсы с рядами декоративных застёжек. Коричневая сумка с металлическими деталями и светлые кроссовки.",
+    "attributes": [
+      "color:cream",
+      "color:blue",
+      "color:brown",
+      "pattern:graphic",
+      "material:denim",
+      "fit:wide_leg",
+      "detail:buttons",
+      "item:t_shirt",
+      "item:jeans",
+      "item:sneakers",
+      "style:casual"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_067",
+    "image_path": "outfit_cards/jpeg(60)",
+    "description": "Объёмный голубой свитер с изображением яблока и прямые синие джинсы. Рыжевато-коричневая обувь без задника и яркая клетчатая сумка с красными ручками.",
+    "attributes": [
+      "color:blue",
+      "color:brown",
+      "color:red",
+      "material:knit",
+      "material:denim",
+      "fit:oversized",
+      "pattern:graphic",
+      "pattern:plaid",
+      "item:sweater",
+      "item:jeans",
+      "item:clogs",
+      "style:casual"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_068",
+    "image_path": "outfit_cards/jpeg(61)",
+    "description": "Приталенный топ без бретелей в яркую вертикальную полоску, короткая тёмная джинсовая юбка и оранжевая сумка. Цветные мюли на невысоком фигурном каблуке и массивные украшения.",
+    "attributes": [
+      "color:green",
+      "color:yellow",
+      "color:orange",
+      "pattern:striped",
+      "material:denim",
+      "silhouette:mini",
+      "detail:strapless",
+      "item:skirt",
+      "item:mules",
+      "style:eclectic"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_069",
+    "image_path": "outfit_cards/jpeg(62)",
+    "description": "Чёрная облегающая майка, белая спортивная куртка на молнии и широкие белые спортивные брюки. Белые кроссовки с высокими носками и чёрная повязка на голову.",
+    "attributes": [
+      "color:black",
+      "color:white",
+      "fit:fitted",
+      "fit:wide_leg",
+      "detail:layering",
+      "item:tank_top",
+      "item:track_jacket",
+      "item:track_pants",
+      "item:sneakers",
+      "style:sporty"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_070",
+    "image_path": "outfit_cards/jpeg(63)",
+    "description": "Свободный светло-серый худи с небольшим рисунком собаки и широкие серые спортивные брюки с мелкими разноцветными мотивами. Мягкий объёмный силуэт в одной основной гамме.",
+    "attributes": [
+      "color:gray",
+      "fit:oversized",
+      "fit:wide_leg",
+      "pattern:graphic",
+      "item:hoodie",
+      "item:track_pants",
+      "style:sporty"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_071",
+    "image_path": "outfit_cards/jpeg(64)",
+    "description": "Серо-голубой укороченный вязаный верх с капюшоном и молнией, светлые джинсы с широкими отворотами. Серые кроссовки и маленькая голубая сумка.",
+    "attributes": [
+      "color:blue",
+      "color:gray",
+      "material:knit",
+      "material:denim",
+      "fit:relaxed",
+      "detail:cropped",
+      "item:hoodie",
+      "item:jeans",
+      "item:sneakers",
+      "style:casual"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_072",
+    "image_path": "outfit_cards/jpeg(65)",
+    "description": "Чёрная свободная футболка с широким вырезом и рисунком грудной клетки, чёрные брюки клёш с пряжками у пояса. Массивные босоножки на платформе, сумка с ремешками и серебристые украшения.",
+    "attributes": [
+      "color:black",
+      "pattern:graphic",
+      "silhouette:flared",
+      "detail:buckles",
+      "detail:platform",
+      "detail:silver_hardware",
+      "item:t_shirt",
+      "item:trousers",
+      "item:heeled_sandals",
+      "style:gothic"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_075",
+    "image_path": "outfit_cards/jpeg(68)",
+    "description": "Чёрный топ без бретелей, объёмная тёмная куртка с цепочками в форме скелета и широкие тёмные брюки карго с ремнями. Ботинки на высоком каблуке и платформе, сумка с цепями.",
+    "attributes": [
+      "color:black",
+      "fit:wide_leg",
+      "detail:strapless",
+      "detail:chains",
+      "detail:cargo_pockets",
+      "detail:platform",
+      "detail:silver_hardware",
+      "item:jacket",
+      "item:cargo_pants",
+      "item:ankle_boots",
+      "style:gothic"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_076",
+    "image_path": "outfit_cards/jpeg(69)",
+    "description": "Белая майка с чёрным рисунком, укороченный чёрный жилет с пряжками и длинная чёрная юбка с ярусами оборок и прозрачными вставками. Чёрные ботильоны на массивном серебристом каблуке и сумка с металлической отделкой.",
+    "attributes": [
+      "color:black",
+      "color:white",
+      "silhouette:maxi",
+      "pattern:graphic",
+      "detail:ruffles",
+      "detail:sheer",
+      "detail:buckles",
+      "detail:silver_hardware",
+      "item:vest",
+      "item:skirt",
+      "item:ankle_boots",
+      "style:gothic"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_077",
+    "image_path": "outfit_cards/jpeg(70)",
+    "description": "Чёрная футболка с крупным музыкальным принтом и свободные оливковые брюки карго с ремнём в заклёпках. Высокие чёрные кеды, тёмная сумка с красными рисунками и серебристые цепи.",
+    "attributes": [
+      "color:black",
+      "color:olive",
+      "color:red",
+      "fit:relaxed",
+      "pattern:graphic",
+      "detail:cargo_pockets",
+      "detail:studs",
+      "detail:chains",
+      "item:t_shirt",
+      "item:cargo_pants",
+      "item:sneakers",
+      "style:grunge"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_078",
+    "image_path": "outfit_cards/jpeg(71)",
+    "description": "Чёрная укороченная майка с графическим принтом и очень широкие серые джинсы с крупными прорезями. Чёрные ботинки на шнуровке, красно-чёрный клетчатый галстук и аксессуары с заклёпками.",
+    "attributes": [
+      "color:black",
+      "color:gray",
+      "color:red",
+      "fit:wide_leg",
+      "material:denim",
+      "pattern:graphic",
+      "pattern:plaid",
+      "detail:distressed",
+      "detail:studs",
+      "item:jeans",
+      "item:combat_boots",
+      "style:grunge"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_079",
+    "image_path": "outfit_cards/jpeg(72)",
+    "description": "Красно-серая футболка с изображением Человека-паука, длинные широкие тёмные джинсовые шорты с рисунком паутины. Красные высокие кеды дополняют свободный уличный образ.",
+    "attributes": [
+      "color:red",
+      "color:gray",
+      "color:black",
+      "fit:relaxed",
+      "material:denim",
+      "pattern:graphic",
+      "item:t_shirt",
+      "item:bermuda_shorts",
+      "item:sneakers",
+      "style:streetwear"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_080",
+    "image_path": "outfit_cards/jpeg(73)",
+    "description": "Белая прилегающая майка и длинная свободная джинсовая юбка с нашивками и видимым клетчатым поясом. Бордовая шапка-бини и белые кроссовки с рисунками.",
+    "attributes": [
+      "color:white",
+      "color:blue",
+      "color:burgundy",
+      "material:denim",
+      "silhouette:maxi",
+      "detail:patches",
+      "pattern:plaid",
+      "item:tank_top",
+      "item:skirt",
+      "item:beanie",
+      "item:sneakers",
+      "style:streetwear"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_081",
+    "image_path": "outfit_cards/jpeg(74)",
+    "description": "Красно-серая футболка с изображением Человека-паука и короткие голубые джинсовые шорты. Бордовые высокие кеды и синяя шапка-бини с рисунком.",
+    "attributes": [
+      "color:red",
+      "color:blue",
+      "color:burgundy",
+      "material:denim",
+      "pattern:graphic",
+      "item:t_shirt",
+      "item:shorts",
+      "item:beanie",
+      "item:sneakers",
+      "style:streetwear"
+    ],
+    "annotation_source": "ai_visual_review"
+  },
+  {
+    "id": "outfit_083",
+    "image_path": "outfit_cards/jpeg(76)",
+    "description": "Красный прилегающий топ без рукавов с диагональными сборками, широкие джинсовые шорты до колена с красными узорами и крупными карманами. Высокие бордовые сапоги, маленькая бордовая сумка и золотистые украшения.",
+    "attributes": [
+      "color:red",
+      "color:blue",
+      "color:burgundy",
+      "material:denim",
+      "fit:relaxed",
+      "detail:draping",
+      "pattern:graphic",
+      "item:bermuda_shorts",
+      "item:knee_high_boots",
+      "style:eclectic"
+    ],
+    "annotation_source": "ai_visual_review"
+  }
+]

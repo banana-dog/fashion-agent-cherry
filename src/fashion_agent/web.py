@@ -1,13 +1,21 @@
 import json
+import sqlite3
 import uuid
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlsplit
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
+from PIL import Image
 
 from src.fashion_agent.graph import graph
+from src.fashion_agent.guided_styling import GuidedStyling
 from src.fashion_agent.styleDNA import Context
+from src.fashion_agent.taste_catalog_web import render_catalog
+from src.fashion_agent.taste_conversation import TasteConversation
+from src.fashion_agent.taste_quiz import load_cards, resolve_card_image
+from src.fashion_agent.taste_quiz_web import TASTE_QUIZ_HTML
 from src.fashion_agent.web_collage import build_outfit_collage_data_url
 
 SESSION_COOKIE = "cherry_session"
@@ -404,6 +412,7 @@ HTML_PAGE = """<!doctype html>
         </div>
 
         <div class="panel-actions">
+          <a href="/cards" style="color:var(--accent);text-align:center;padding:8px">Коллекция образов</a>
           <button id="newChatButton" class="secondary" type="button">
             Новый разговор
           </button>
@@ -541,6 +550,8 @@ HTML_PAGE = """<!doctype html>
         sendButton.disabled = isBusy;
         newChatButton.disabled = isBusy;
         statusNode.textContent = label;
+        Object.values(settings).forEach(input => { input.disabled = isBusy; });
+        setTasteBusy(isBusy);
       }
 
       function loadSettings() {
@@ -591,7 +602,7 @@ HTML_PAGE = """<!doctype html>
           throw new Error(data.error || "Request failed");
         }
 
-        addAssistantMessage(data.reply, data.outfits || []);
+        renderTasteResponse(data);
         setBusy(false, "Ответ готов");
       }
 
@@ -618,9 +629,7 @@ HTML_PAGE = """<!doctype html>
         }
 
         messagesNode.innerHTML = "";
-        addAssistantMessage(
-          "Новый разговор готов. Опиши повод, бюджет и желаемый стиль.",
-        );
+        renderTasteResponse(data);
         setBusy(false, "Новый разговор создан");
       }
 
@@ -653,13 +662,12 @@ HTML_PAGE = """<!doctype html>
       });
 
       loadSettings();
-      addAssistantMessage(
-        "Cherry на связи. Напиши, какой образ нужен, и я сохраню контекст в рамках этой сессии.",
-      );
     </script>
   </body>
 </html>
 """
+
+HTML_PAGE = HTML_PAGE.replace("</body>", TASTE_QUIZ_HTML + "</body>")
 
 
 def new_session_state(
@@ -688,9 +696,7 @@ def serialize_outfits(
                 "explanation",
                 "",
             ),
-            "collage_data_url": build_outfit_collage_data_url(
-                outfit
-            ),
+            "collage_data_url": build_outfit_collage_data_url(outfit),
             "issues": outfit.get(
                 "issues",
                 [],
@@ -724,24 +730,16 @@ def web_reply_text(
         last_message = result["messages"][-1]
         return str(last_message.content)
 
-    approved = [
-        outfit
-        for outfit in outfits
-        if outfit.get("approved")
-    ]
+    approved = [outfit for outfit in outfits if outfit.get("approved")]
     selected = approved[:3] if approved else outfits[:3]
 
-    lines = [
-        "🍒 Собрала варианты и показала их карточками ниже."
-    ]
+    lines = ["🍒 Собрала варианты и показала их карточками ниже."]
 
     for index, outfit in enumerate(
         selected,
         start=1,
     ):
-        lines.append(
-            f"{index}. Образ — {outfit['total_price']} {outfit['currency']}"
-        )
+        lines.append(f"{index}. Образ — {outfit['total_price']} {outfit['currency']}")
 
     return "\n".join(lines)
 
@@ -762,15 +760,18 @@ def run_agent_turn(
         currency=session["currency"],
     )
 
+    pending = list(session.get("taste_context", []))
     result = graph.invoke(
         {
             "messages": [
+                *pending,
                 HumanMessage(content=user_input),
             ]
         },  # type: ignore[arg-type]
         config=config,  # type: ignore[arg-type]
         context=context,  # type: ignore[arg-type]
     )
+    session["taste_context"] = session.get("taste_context", [])[len(pending) :]
 
     return {
         "reply": web_reply_text(result),
@@ -783,13 +784,40 @@ def run_agent_turn(
     }
 
 
+def remember_taste_response(
+    session: dict, response: dict, user_message: str | None = None
+) -> None:
+    """Include onboarding and the extracted profile in the next graph conversation."""
+    messages = session.setdefault("taste_context", [])
+    if user_message:
+        messages.append(HumanMessage(content=user_message))
+    reply = response["reply"]
+    if not messages or messages[-1].content != reply:
+        messages.append(AIMessage(content=reply))
+    session["taste_context"] = messages[-64:]
+    session["taste_pair"] = response.get("taste_pair")
+
+
 class CherryWebHandler(BaseHTTPRequestHandler):
     server_version = "CherryWeb/0.1"
 
     def do_GET(
         self,
     ):
-        if self.path in {"/", "/index.html"}:
+        if urlsplit(self.path).path.startswith("/api/taste/images/"):
+            self._handle_taste_image()
+            return
+
+        if urlsplit(self.path).path in {"/cards", "/cards/"}:
+            try:
+                self._send_html(render_catalog(load_cards()))
+            except (OSError, ValueError):
+                self.send_error(
+                    HTTPStatus.INTERNAL_SERVER_ERROR, "Could not load outfit cards"
+                )
+            return
+
+        if urlsplit(self.path).path in {"/", "/index.html"}:
             self._ensure_session()
             self._send_html(HTML_PAGE)
             return
@@ -809,6 +837,10 @@ class CherryWebHandler(BaseHTTPRequestHandler):
     def do_POST(
         self,
     ):
+        if self.path in {"/api/taste/session", "/api/taste/next", "/api/taste/answer"}:
+            self._handle_taste()
+            return
+
         if self.path == "/api/chat":
             self._handle_chat()
             return
@@ -832,9 +864,7 @@ class CherryWebHandler(BaseHTTPRequestHandler):
     def _read_json(
         self,
     ) -> dict:
-        content_length = int(
-            self.headers.get("Content-Length", "0")
-        )
+        content_length = int(self.headers.get("Content-Length", "0"))
 
         if content_length <= 0:
             return {}
@@ -870,18 +900,14 @@ class CherryWebHandler(BaseHTTPRequestHandler):
         session: dict,
         payload: dict,
     ):
-        session["user_id"] = (
-            payload.get("user_id")
-            or session["user_id"]
-        )
-        session["locale"] = (
-            payload.get("locale")
-            or session["locale"]
-        )
-        session["currency"] = (
-            payload.get("currency")
-            or session["currency"]
-        )
+        user_id = payload.get("user_id") or session["user_id"]
+        if user_id != session["user_id"]:
+            session["thread_id"] = str(uuid.uuid4())
+            session.pop("taste_context", None)
+            session.pop("taste_pair", None)
+        session["user_id"] = user_id
+        session["locale"] = payload.get("locale") or session.get("locale", "ru-RU")
+        session["currency"] = payload.get("currency") or session.get("currency", "RUB")
 
     def _send_html(
         self,
@@ -904,10 +930,7 @@ class CherryWebHandler(BaseHTTPRequestHandler):
         if is_new:
             self.send_header(
                 "Set-Cookie",
-                (
-                    f"{SESSION_COOKIE}={session_id}; "
-                    "Path=/; HttpOnly; SameSite=Lax"
-                ),
+                (f"{SESSION_COOKIE}={session_id}; Path=/; HttpOnly; SameSite=Lax"),
             )
         self.end_headers()
         self.wfile.write(encoded)
@@ -941,14 +964,110 @@ class CherryWebHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(encoded)
 
+    def _handle_taste_image(self):
+        card_id = urlsplit(self.path).path.removeprefix("/api/taste/images/")
+        try:
+            card = next((card for card in load_cards() if card.id == card_id), None)
+            if card is None or not card.image_path:
+                self.send_error(HTTPStatus.NOT_FOUND, "Image not found")
+                return
+            path = resolve_card_image(card.image_path)
+            with Image.open(path) as picture:
+                content_type = {
+                    "JPEG": "image/jpeg",
+                    "PNG": "image/png",
+                    "WEBP": "image/webp",
+                }.get(picture.format)
+            if content_type is None:
+                self.send_error(HTTPStatus.NOT_FOUND, "Unsupported image")
+                return
+            data = path.read_bytes()
+        except (OSError, ValueError):
+            self.send_error(HTTPStatus.NOT_FOUND, "Image not found")
+            return
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _handle_taste(self):
+        try:
+            payload = self._read_json()
+            if not isinstance(payload, dict):
+                raise TypeError("Ожидается JSON-объект.")
+            session_id, session, is_new = self._ensure_session()
+            user_id = payload.get("user_id") or session["user_id"]
+            if not isinstance(user_id, str) or not user_id.strip():
+                raise ValueError("Укажите пользователя.")
+            self._update_session_settings(session, {**payload, "user_id": user_id})
+            conversation = TasteConversation()
+            user_message = None
+            if self.path == "/api/taste/next":
+                from src.fashion_agent.taste_quiz import TasteQuiz
+
+                response = TasteQuiz().next_pair(user_id, load_cards())
+                self._send_json(HTTPStatus.OK, response)
+                return
+            if self.path == "/api/taste/answer":
+                round_id, choice = payload.get("round_id"), payload.get("choice")
+                if not isinstance(round_id, str) or not isinstance(choice, str):
+                    raise ValueError("Укажите пару и выбранный вариант.")
+                pair = session.get("taste_pair")
+                user_message = {
+                    "left": "Выбираю левый образ",
+                    "right": "Выбираю правый образ",
+                    "skip": "Пропускаю пару",
+                }.get(choice, choice)
+                if (
+                    pair
+                    and pair["round_id"] == round_id
+                    and choice in {"left", "right"}
+                ):
+                    user_message += (
+                        ": "
+                        + pair["cards"][0 if choice == "left" else 1]["description"]
+                    )
+                if pair is None:
+                    from src.fashion_agent.taste_quiz import TasteQuiz
+
+                    TasteQuiz().answer(user_id, round_id, choice)
+                    self._send_json(HTTPStatus.OK, {"ok": True})
+                    return
+                response = conversation.answer(user_id, round_id, choice)
+            else:
+                response = conversation.welcome(user_id)
+                # Keep the former API shape available for clients that still read
+                # round_id/cards directly; the chat uses taste_pair.
+                if response.get("taste_pair"):
+                    response = {**response, **response["taste_pair"]}
+            remember_taste_response(session, response, user_message)
+            self._send_json(
+                HTTPStatus.OK,
+                response,
+                set_cookie=(
+                    f"{SESSION_COOKIE}={session_id}; Path=/; HttpOnly; SameSite=Lax"
+                )
+                if is_new
+                else None,
+            )
+        except (ValueError, TypeError) as error:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
+        except (OSError, sqlite3.Error):
+            self._send_json(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {
+                    "error": "Не удалось открыть коллекцию или сохранить ответ. Попробуйте ещё раз."
+                },
+            )
+
     def _handle_chat(
         self,
     ):
         try:
             payload = self._read_json()
-            message = str(
-                payload.get("message", "")
-            ).strip()
+            message = str(payload.get("message", "")).strip()
 
             if not message:
                 self._send_json(
@@ -962,23 +1081,35 @@ class CherryWebHandler(BaseHTTPRequestHandler):
                 session,
                 payload,
             )
-            response = run_agent_turn(
-                user_input=message,
-                session=session,
-            )
+            guided = GuidedStyling().process(session["user_id"], message)
+            if guided is not None and guided.get("handoff"):
+                remember_taste_response(session, guided, message)
+                graph_response = run_agent_turn(
+                    user_input=guided["handoff"], session=session
+                )
+                response = {
+                    **graph_response,
+                    "reply": guided["reply"] + "\n\n" + graph_response["reply"],
+                    "taste_pair": None,
+                    "taste_profile": None,
+                }
+            elif guided is not None:
+                remember_taste_response(session, guided, message)
+                response = guided
+            else:
+                session["taste_pair"] = None
+                response = run_agent_turn(user_input=message, session=session)
 
             set_cookie = None
             if is_new:
                 set_cookie = (
-                    f"{SESSION_COOKIE}={session_id}; "
-                    "Path=/; HttpOnly; SameSite=Lax"
+                    f"{SESSION_COOKIE}={session_id}; Path=/; HttpOnly; SameSite=Lax"
                 )
 
             self._send_json(
                 HTTPStatus.OK,
                 {
-                    "reply": response["reply"],
-                    "outfits": response["outfits"],
+                    **response,
                     "thread_id": session["thread_id"],
                 },
                 set_cookie=set_cookie,
@@ -1003,22 +1134,30 @@ class CherryWebHandler(BaseHTTPRequestHandler):
             session_id, session, is_new = self._ensure_session()
 
             session["thread_id"] = str(uuid.uuid4())
+            session.pop("taste_context", None)
             self._update_session_settings(
                 session,
                 payload,
             )
 
+            response = {
+                "reply": "Новый разговор готов. Расскажи о событии, желаемом стиле и предпочтениях.",
+                "outfits": [],
+                "taste_pair": None,
+                "taste_profile": None,
+            }
+
             set_cookie = None
             if is_new:
                 set_cookie = (
-                    f"{SESSION_COOKIE}={session_id}; "
-                    "Path=/; HttpOnly; SameSite=Lax"
+                    f"{SESSION_COOKIE}={session_id}; Path=/; HttpOnly; SameSite=Lax"
                 )
 
             self._send_json(
                 HTTPStatus.OK,
                 {
                     "ok": True,
+                    **response,
                     "thread_id": session["thread_id"],
                 },
                 set_cookie=set_cookie,
