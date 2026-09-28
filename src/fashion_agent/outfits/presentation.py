@@ -2,6 +2,8 @@ from typing import Literal
 
 from langchain_core.messages import AIMessage
 
+from fashion_agent.body_profile import advice_ru
+from fashion_agent.client_profile import ClientProfile
 from fashion_agent.outfits.diagnostics import (
     failure_messages,
     format_constraints_block,
@@ -167,6 +169,11 @@ def present_outfits(
 
     if relaxations:
         lines.append("Что пришлось ослабить: " + "; ".join(relaxations))
+
+    notes = advice_ru(ClientProfile.model_validate(state.get("client_profile") or {}))
+
+    if notes:
+        lines.append("Под твой профиль: " + notes[0])
 
     for index, outfit in enumerate(
         selected,

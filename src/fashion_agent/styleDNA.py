@@ -1,4 +1,6 @@
+import os
 from functools import lru_cache
+from pathlib import Path
 
 from langchain_core.messages import (
     HumanMessage,
@@ -23,9 +25,14 @@ IMPLICIT_SOURCES = frozenset({"pairwise", "photo"})
 MAX_PREFERENCES = 500
 
 
-@lru_cache(maxsize=1)
-def taste_quiz() -> TasteQuiz:
-    return TasteQuiz()
+@lru_cache(maxsize=8)
+def taste_quiz(path: str | None = None) -> TasteQuiz:
+    """Cached per path, not once per process.
+
+    A single-entry cache pinned the first database the process ever opened, so
+    reconfiguring CHERRY_TASTE_DB afterwards was silently ignored.
+    """
+    return TasteQuiz(Path(path) if path else None)
 
 
 def update_style_memory(
@@ -113,7 +120,9 @@ def load_style_memory(
     # Both implicit sources are one tier below what the client said in words: a
     # quiz pair and a reference photo are hints, not statements.
     for implicit in (
-        taste_quiz().preferences(runtime.context.user_id),
+        taste_quiz(os.getenv("CHERRY_TASTE_DB")).preferences(
+            runtime.context.user_id
+        ),
         wardrobe.reference_preferences(runtime.context.user_id),
     ):
         preferences.extend(

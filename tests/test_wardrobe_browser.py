@@ -29,9 +29,9 @@ def browser_page(tmp_path, monkeypatch):
     monkeypatch.setenv("CHERRY_WARDROBE_IMAGES", str(tmp_path / "images"))
     monkeypatch.delenv("VISION_API_KEY", raising=False)
 
-    import fashion_agent.wardrobe as wardrobe_module
+    from fashion_agent.wardrobe import reset_wardrobe
 
-    wardrobe_module.reset_wardrobe()
+    reset_wardrobe()
 
     from http.server import ThreadingHTTPServer
 
@@ -62,7 +62,7 @@ def browser_page(tmp_path, monkeypatch):
     finally:
         server.shutdown()
         server.server_close()
-        wardrobe_module.reset_wardrobe()
+        reset_wardrobe()
 
     assert errors == [], f"page errors: {errors}"
 

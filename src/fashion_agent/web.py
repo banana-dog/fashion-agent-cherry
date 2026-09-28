@@ -9,8 +9,8 @@ from urllib.parse import urlsplit
 from langchain_core.messages import AIMessage, HumanMessage
 from PIL import Image
 
+from fashion_agent.body_profile import BodyProfileConversation
 from fashion_agent.graph import graph
-from fashion_agent.guided_styling import GuidedStyling
 from fashion_agent.storage import build_store
 from fashion_agent.styleDNA import Context
 from fashion_agent.taste_catalog_web import render_catalog
@@ -1109,6 +1109,11 @@ HTML_PAGE = """<!doctype html>
 
       loadSettings();
       loadWardrobe();
+      // The taste invitation was wired up but never called, so the quiz could
+      // only start if the client happened to type the right word.
+      if (typeof initializeTasteConversation === "function") {
+        initializeTasteConversation();
+      }
     </script>
   </body>
 </html>
@@ -1246,6 +1251,81 @@ def remember_taste_response(
         messages.append(AIMessage(content=reply))
     session["taste_context"] = messages[-64:]
     session["taste_pair"] = response.get("taste_pair")
+
+
+PROFILE_START_PHRASES = {
+    "расскажи о себе",
+    "профиль",
+    "тест про фигуру",
+    "тест про тело",
+    "о себе заново",
+    "заполнить профиль",
+}
+
+PROFILE_START_KEYWORDS = ("про фигур", "про тел", "о себе", "профил")
+
+_body_profile: BodyProfileConversation | None = None
+
+
+def get_body_profile() -> BodyProfileConversation:
+    global _body_profile
+
+    if _body_profile is None:
+        _body_profile = BodyProfileConversation(build_store())
+
+    return _body_profile
+
+
+def body_profile_process(
+    user_id: str,
+    message: str,
+) -> dict | None:
+    """Answer a profile question, or step aside for a real request.
+
+    This replaces a wizard that intercepted every message, including the first
+    shopping request, and which stored its state in the row the taste quiz uses.
+    It now only speaks while a profile is actually being filled in, and only
+    when the message is about that.
+    """
+    conversation = get_body_profile()
+    text = message.strip()
+    lowered = text.lower()
+
+    if any(phrase in lowered for phrase in PROFILE_START_PHRASES):
+        if "заново" in lowered or "заполнить" in lowered:
+            return conversation.reset(user_id)
+
+        return conversation.welcome(user_id)
+
+    if not conversation.is_active(user_id):
+        return None
+
+    if looks_like_a_shopping_request(lowered):
+        return None
+
+    if any(phrase in lowered for phrase in ("позже", "не сейчас", "пропустить")):
+        return conversation.finish(user_id)
+
+    return conversation.answer(user_id, text)
+
+
+# A client who asks for an outfit mid-question wants the outfit, not the quiz.
+SHOPPING_REQUEST_WORDS = (
+    "собери",
+    "образ",
+    "подбер",
+    "купи",
+    "найди",
+    "что надеть",
+    "на что надеть",
+    "сколько стоит",
+    "посмотри",
+    "покажи",
+)
+
+
+def looks_like_a_shopping_request(message: str) -> bool:
+    return any(word in message for word in SHOPPING_REQUEST_WORDS)
 
 
 class CherryWebHandler(BaseHTTPRequestHandler):
@@ -1630,24 +1710,22 @@ class CherryWebHandler(BaseHTTPRequestHandler):
                 session,
                 payload,
             )
-            guided = GuidedStyling().process(session["user_id"], message)
-            if guided is not None and guided.get("handoff"):
-                remember_taste_response(session, guided, message)
-                graph_response = run_agent_turn(
-                    user_input=guided["handoff"], session=session
-                )
-                response = {
-                    **graph_response,
-                    "reply": guided["reply"] + "\n\n" + graph_response["reply"],
-                    "taste_pair": None,
-                    "taste_profile": None,
-                }
-            elif guided is not None:
-                remember_taste_response(session, guided, message)
-                response = guided
+            profile = body_profile_process(session["user_id"], message)
+            session["taste_pair"] = None
+
+            if profile is not None:
+                remember_taste_response(session, profile, message)
+                response = profile
             else:
-                session["taste_pair"] = None
-                response = run_agent_turn(user_input=message, session=session)
+                # The invitation was rendered, but answering it went to the
+                # graph, which knows nothing about pairs of outfits.
+                taste = TasteConversation().message(session["user_id"], message)
+
+                if taste is not None:
+                    remember_taste_response(session, taste, message)
+                    response = taste
+                else:
+                    response = run_agent_turn(user_input=message, session=session)
 
             set_cookie = None
             if is_new:

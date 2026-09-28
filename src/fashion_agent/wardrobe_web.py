@@ -8,7 +8,8 @@ because a wrong colour in a wardrobe is the most expensive mistake here.
 import json
 from http import HTTPStatus
 
-from fashion_agent.client_profile import load_client_profile
+from fashion_agent.body_profile import advice_ru
+from fashion_agent.client_profile import load_client_profile, profile_ru_lines
 from fashion_agent.reference_taste import NO_SIGNAL_NOTE, profile_lines
 from fashion_agent.vision import (
     VisionCallFailed,
@@ -412,9 +413,9 @@ def critique_look(
     profile_lines = []
 
     if profile is not None:
-        from fashion_agent.client_profile import profile_ru_lines
-
-        profile_lines = profile_ru_lines(profile)
+        # The advice is what makes the critique personal: a photo cannot show
+        # that a client does not want attention on her legs.
+        profile_lines = profile_ru_lines(profile) + advice_ru(profile)
 
     try:
         result = vision.critique_look(

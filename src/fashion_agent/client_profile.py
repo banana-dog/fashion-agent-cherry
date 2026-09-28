@@ -156,6 +156,10 @@ def profile_ru_lines(profile: ClientProfile) -> list[str]:
         lines.append(
             f"Тип фигуры: {BODY_SHAPE_LABELS[profile.body_shape]}{note}{confidence}"
         )
+    elif profile.body_shape_note:
+        # She described herself and did not pick a label, so her words are
+        # all we have, and they are worth saying out loud.
+        lines.append(f"О себе: {profile.body_shape_note}")
 
     if profile.proportions.height_cm:
         lines.append(f"Рост: {profile.proportions.height_cm:.0f} см")

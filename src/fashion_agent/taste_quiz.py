@@ -15,6 +15,11 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
+# Dialogue state is stored as one row per user, so the independent dialogues
+# that run for the same person keep their own section.
+TASTE_SECTION = "taste"
+PROFILE_SECTION = "profile"
+
 
 def resolve_card_image(image_path: str) -> Path:
     relative = Path(image_path)
@@ -170,17 +175,41 @@ class TasteQuiz:
                 for row in rows
             ]
 
-    def dialogue(self, user_id: str) -> dict:
+    def dialogue(
+        self,
+        user_id: str,
+        section: str = TASTE_SECTION,
+    ) -> dict:
         with self._connect() as db:
             row = db.execute("SELECT data FROM taste_dialogues WHERE user_id = ?", (user_id,)).fetchone()
-        return json.loads(row["data"]) if row else {}
+        sections = json.loads(row["data"]) if row else {}
+        state = sections.get(section, {})
+        return state if isinstance(state, dict) else {}
 
-    def save_dialogue(self, user_id: str, state: dict) -> None:
+    def save_dialogue(
+        self,
+        user_id: str,
+        state: dict,
+        section: str = TASTE_SECTION,
+    ) -> None:
+        """Store one section of dialogue state.
+
+        Several dialogues run per user, so each keeps its own section. They used
+        to share one row and overwrite each other.
+        """
         with self._connect() as db:
+            row = db.execute("SELECT data FROM taste_dialogues WHERE user_id = ?", (user_id,)).fetchone()
+            sections = json.loads(row["data"]) if row else {}
+
+            if not isinstance(sections, dict):
+                sections = {}
+
+            sections[section] = state
+
             db.execute(
                 "INSERT INTO taste_dialogues (user_id, data) VALUES (?, ?) "
                 "ON CONFLICT(user_id) DO UPDATE SET data=excluded.data",
-                (user_id, json.dumps(state, ensure_ascii=False)),
+                (user_id, json.dumps(sections, ensure_ascii=False)),
             )
 
     def next_pair(self, user_id: str, cards: list[OutfitCard]) -> dict:

@@ -14,6 +14,7 @@ import uuid
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from enum import StrEnum
+from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
@@ -176,12 +177,20 @@ def utc_now() -> str:
 class Wardrobe:
     """A client's wardrobe: one row per garment, one file per photo."""
 
-    def __init__(self, path: Path | str | None = None):
+    def __init__(
+        self,
+        path: Path | str | None = None,
+        images_path: str | None = None,
+    ):
         self.db_path = Path(path) if path else data_path(
             "CHERRY_WARDROBE_DB",
             "wardrobe.sqlite3",
         )
-        self.root = data_path("CHERRY_WARDROBE_IMAGES", "wardrobe_images")
+        self.root = (
+            Path(images_path)
+            if images_path
+            else data_path("CHERRY_WARDROBE_IMAGES", "wardrobe_images")
+        )
         self._local = threading.local()
         self._lock = threading.Lock()
 
@@ -598,19 +607,14 @@ def image_type_or_raise(head: bytes) -> str:
     return content_type
 
 
-_wardrobe: Wardrobe | None = None
-
-
-def get_wardrobe() -> Wardrobe:
-    global _wardrobe
-
-    if _wardrobe is None:
-        _wardrobe = Wardrobe()
-
-    return _wardrobe
+@lru_cache(maxsize=8)
+def get_wardrobe(
+    db_path: str | None = None,
+    images_path: str | None = None,
+) -> Wardrobe:
+    """Cached per path, so reconfiguring the environment is respected."""
+    return Wardrobe(Path(db_path) if db_path else None)
 
 
 def reset_wardrobe() -> None:
-    global _wardrobe
-
-    _wardrobe = None
+    get_wardrobe.cache_clear()

@@ -98,9 +98,9 @@ def server(tmp_path, monkeypatch):
     monkeypatch.setenv("CHERRY_WARDROBE_IMAGES", str(tmp_path / "images"))
     monkeypatch.delenv("VISION_API_KEY", raising=False)
 
-    import fashion_agent.wardrobe as wardrobe_module
+    from fashion_agent.wardrobe import reset_wardrobe
 
-    wardrobe_module.reset_wardrobe()
+    reset_wardrobe()
 
 
     holder: dict = {}
@@ -123,11 +123,11 @@ def server(tmp_path, monkeypatch):
 
     _host, port = holder["server"].server_address
 
-    yield f"http://127.0.0.1:{port}", wardrobe_module
+    yield f"http://127.0.0.1:{port}", None
 
     holder["server"].shutdown()
     holder["server"].server_close()
-    wardrobe_module.reset_wardrobe()
+    reset_wardrobe()
 
 
 def test_upload_list_and_delete_an_item(server):
@@ -252,9 +252,8 @@ def test_patching_a_missing_item(server):
     assert status == 404
 
 
-def test_wardrobe_listing_explains_the_photo_signal(server, monkeypatch):
-    base, wardrobe_module = server
-    wardrobe_module.reset_wardrobe()
+def test_wardrobe_listing_explains_the_photo_signal(server):
+    base, _module = server
 
     from fashion_agent.wardrobe import get_wardrobe
 
