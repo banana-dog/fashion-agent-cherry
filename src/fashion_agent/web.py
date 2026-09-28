@@ -1424,6 +1424,10 @@ class CherryWebHandler(BaseHTTPRequestHandler):
             self._handle_reset()
             return
 
+        if self.path == "/api/trends/refresh":
+            self._handle_trend_refresh()
+            return
+
         self.send_error(
             HTTPStatus.NOT_FOUND,
             "Not found",
@@ -1690,6 +1694,32 @@ class CherryWebHandler(BaseHTTPRequestHandler):
                     "error": "Не удалось открыть коллекцию или сохранить ответ. Попробуйте ещё раз."
                 },
             )
+
+    def _handle_trend_refresh(
+        self,
+    ):
+        """Collect trend cards from public feeds on demand."""
+        from fashion_agent.knowledge.repository import reload_knowledge
+        from fashion_agent.trends.refresh import refresh
+
+        try:
+            report = refresh()
+        except Exception as error:  # noqa: BLE001 - report, never crash the server
+            self._send_json(
+                HTTPStatus.BAD_GATEWAY,
+                {"error": f"{type(error).__name__}: {error}"},
+            )
+            return
+
+        repository = reload_knowledge()
+
+        self._send_json(
+            HTTPStatus.OK,
+            {
+                "report": report.model_dump(),
+                "active_trends": len(repository.trends()),
+            },
+        )
 
     def _handle_chat(
         self,

@@ -117,8 +117,16 @@ class FashionKnowledgeRepository:
     def _load_trends(
         self,
     ) -> list[TrendCard]:
-        items = []
-        seen_ids = set()
+        items: list[TrendCard] = []
+        seen_ids: set[str] = set()
+
+        # Collected cards come first: a refresh is newer than the seed file, and
+        # the seed stays as the floor for a season nothing has been collected
+        # for yet.
+        collected = self._load_collected_trends()
+        for trend in collected:
+            items.append(trend)
+            seen_ids.add(trend.id)
 
         for index, payload in enumerate(self._load_json_objects("trends.json")):
             try:
@@ -130,12 +138,25 @@ class FashionKnowledgeRepository:
                 ) from error
 
             if trend.id in seen_ids:
-                raise ValueError(f"trends.json: duplicate id {trend.id}")
+                continue
 
             items.append(trend)
             seen_ids.add(trend.id)
 
         return items
+
+    def _load_collected_trends(self) -> list[TrendCard]:
+        try:
+            from fashion_agent.trends.store import get_trend_store
+
+            return get_trend_store().cards()
+        except Exception:  # noqa: BLE001 - a missing store is not a broken repository
+            return []
+
+    def reload(self) -> None:
+        """Re-read the sources, so a refresh is visible without a restart."""
+        self._trends = self._load_trends()
+        self._validate_trend_style_refs()
 
     def _validate_formula_style_refs(
         self,
@@ -165,3 +186,11 @@ class FashionKnowledgeRepository:
 @lru_cache(maxsize=1)
 def get_knowledge_repository() -> FashionKnowledgeRepository:
     return FashionKnowledgeRepository()
+
+
+def reload_knowledge() -> FashionKnowledgeRepository:
+    """Pick up freshly collected trends without restarting the process."""
+    repository = get_knowledge_repository()
+    repository.reload()
+
+    return repository

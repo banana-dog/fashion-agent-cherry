@@ -96,8 +96,15 @@ def explanation_lines(
         trend = trends_by_id.get(trend_id)
         if trend:
             lines.append(
-                f"• {trend['name']} использован как мягкий акцент, а не как обязательная тема всего образа."
+                f"• {trend['name']} использован как мягкий акцент, "
+                "а не как обязательная тема всего образа."
             )
+            # A trend the client cannot trace is a rumour she is being asked to
+            # spend money on, so the source travels with the claim.
+            source = (trend.get("sources") or [{}])[0]
+
+            if source.get("url"):
+                lines.append(f"  Источник: {source['url']}")
 
     if resolved_style.get("avoid_costume_effect", True) and (
         outfit.get("matched_formula_ids") or outfit.get("matched_trend_ids")

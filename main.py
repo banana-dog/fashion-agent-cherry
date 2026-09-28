@@ -57,6 +57,7 @@ def main():
         choices=[
             "cli",
             "web",
+            "refresh-trends",
         ],
         default="cli",
     )
@@ -78,7 +79,38 @@ def main():
         )
         return
 
+    if args.mode == "refresh-trends":
+        run_trend_refresh()
+        return
+
     run_cli()
+
+
+def run_trend_refresh():
+    """Collect trend candidates from public feeds and keep what they support."""
+    from fashion_agent.knowledge.repository import reload_knowledge
+    from fashion_agent.trends.refresh import refresh
+    from fashion_agent.trends.store import get_trend_store
+
+    print("Собираю заголовки...")
+
+    report = refresh()
+
+    print(f"Заголовков собрано: {report.items_collected}")
+    print(f"Карточек записано: {report.cards_upserted}")
+    print(f"Новых: {len(report.created)}, обновлено: {len(report.updated)}")
+    print(f"Архивировано по сроку: {report.cards_archived}")
+
+    if report.rejected:
+        print(f"Отклонено без источника: {', '.join(report.rejected)}")
+
+    for name, problem in report.problems.items():
+        print(f"Источник недоступен — {name}: {problem}")
+
+    repository = reload_knowledge()
+
+    print(f"Всего активных трендов: {len(repository.trends())}")
+    print(f"Запусков в журнале: {len(get_trend_store().runs())}")
 
 
 if __name__ == "__main__":

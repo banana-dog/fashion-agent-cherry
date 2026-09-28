@@ -346,3 +346,11 @@ def build_store() -> SQLiteStore:
 
 def store_namespace(user_id: str) -> tuple[str, ...]:
     return ("users", cast(str, user_id), "style_preferences")
+
+
+def reset_checkpointer() -> None:
+    """Drop the shared checkpointer, so a new database path is picked up."""
+    global _CHECKPOINTER
+
+    with _CHECKPOINTER_LOCK:
+        _CHECKPOINTER = None
