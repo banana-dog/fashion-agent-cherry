@@ -16,6 +16,10 @@ from fashion_agent.wardrobe_outfit import owned_items
 
 preference_extractor = llm.with_structured_output(PreferenceExtraction)
 
+# Preferences the client did not state in words: a quiz pair they picked, or a
+# reference photo they sent. They inform ranking, they never exclude.
+IMPLICIT_SOURCES = frozenset({"pairwise", "photo"})
+
 MAX_PREFERENCES = 500
 
 
@@ -102,13 +106,21 @@ def load_style_memory(
         limit=MAX_PREFERENCES,
     )
 
+    wardrobe = get_wardrobe()
     preferences = [memory.value for memory in memories]
     explicit_keys = {(value["category"], value["target"]) for value in preferences}
-    preferences.extend(
-        value
-        for value in taste_quiz().preferences(runtime.context.user_id)
-        if (value["category"], value["target"]) not in explicit_keys
-    )
+
+    # Both implicit sources are one tier below what the client said in words: a
+    # quiz pair and a reference photo are hints, not statements.
+    for implicit in (
+        taste_quiz().preferences(runtime.context.user_id),
+        wardrobe.reference_preferences(runtime.context.user_id),
+    ):
+        preferences.extend(
+            value
+            for value in implicit
+            if (value["category"], value["target"]) not in explicit_keys
+        )
 
     profile = load_client_profile(
         runtime.store,  # type: ignore
@@ -116,15 +128,18 @@ def load_style_memory(
     )
 
     request = state.get("request") or {}
-    wardrobe = owned_items(
-        get_wardrobe().items(runtime.context.user_id),
+    owned = owned_items(
+        wardrobe.items(runtime.context.user_id),
         occasion=request.get("occasion"),
     )
 
     return {
         "style_preferences": preferences,
         "client_profile": profile.model_dump(mode="json"),
-        "wardrobe_items": wardrobe,
+        "wardrobe_items": owned,
+        "reference_preferences": wardrobe.reference_preferences(
+            runtime.context.user_id
+        ),
     }
 
 
@@ -160,7 +175,9 @@ def product_hard_conflicts(
     hard_conflicts = []
 
     for preference in preferences:
-        if preference.get("source") == "pairwise":
+        # A photo the client sent and a pair they picked are both one shoot or
+        # one click, not a conviction, so neither may exclude a product.
+        if preference.get("source") in IMPLICIT_SOURCES:
             continue
         preference_key = f"{preference['category']}:{preference['target']}"
 

@@ -40,6 +40,7 @@ class FashionState(TypedDict):
     style_preferences: list[dict]
     client_profile: dict | None
     wardrobe_items: list[dict]
+    reference_preferences: list[dict]
     retrieved_style_cards: list[dict]
     retrieved_outfit_formulas: list[dict]
     retrieved_trends: list[dict]

@@ -259,6 +259,36 @@ HTML_PAGE = """<!doctype html>
         border-color: var(--accent);
       }
 
+      .wardrobe-references {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 6px;
+      }
+
+      .wardrobe-references img {
+        width: 54px;
+        height: 54px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 2px solid transparent;
+      }
+
+      .wardrobe-references img.disliked {
+        border-color: #b64b4b;
+      }
+
+      .wardrobe-references img.liked {
+        border-color: var(--accent);
+      }
+
+      .wardrobe-reference-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+
       .wardrobe-actions {
         display: flex;
         flex-wrap: wrap;
@@ -549,6 +579,18 @@ HTML_PAGE = """<!doctype html>
             <span class="hint" id="wardrobeHint"></span>
           </div>
           <div class="wardrobe-grid" id="wardrobeGrid"></div>
+          <div class="wardrobe-references" id="wardrobeReferences"></div>
+          <p class="hint" id="tasteNotes"></p>
+          <div class="wardrobe-reference-actions">
+            <label class="file-button">
+              <input type="file" id="referencePhoto" accept="image/*" hidden>
+              <span>Прислать образец вкуса</span>
+            </label>
+            <select id="referenceLiked">
+              <option value="1">нравится</option>
+              <option value="0">не нравится</option>
+            </select>
+          </div>
           <form class="wardrobe-actions" id="wardrobeForm">
             <label class="file-button">
               <input type="file" id="wardrobePhoto" accept="image/*" hidden>
@@ -823,6 +865,10 @@ HTML_PAGE = """<!doctype html>
       const wardrobeCategory = document.getElementById("wardrobeCategory");
       const wardrobeNote = document.getElementById("wardrobeNote");
       const lookPhoto = document.getElementById("lookPhoto");
+      const wardrobeReferences = document.getElementById("wardrobeReferences");
+      const tasteNotes = document.getElementById("tasteNotes");
+      const referencePhoto = document.getElementById("referencePhoto");
+      const referenceLiked = document.getElementById("referenceLiked");
       const critiqueButton = document.getElementById("critiqueButton");
 
       function setWardrobeBusy(isBusy) {
@@ -892,6 +938,24 @@ HTML_PAGE = """<!doctype html>
 
           wardrobeGrid.appendChild(card);
         });
+
+        const references = payload.references || [];
+        wardrobeReferences.innerHTML = "";
+
+        references.forEach(reference => {
+          const image = document.createElement("img");
+          image.src = reference.image_url;
+          image.alt = reference.liked ? "образец, нравится" : "образец, не нравится";
+          image.className = reference.liked ? "liked" : "disliked";
+          image.loading = "lazy";
+          image.title = reference.reasons && reference.reasons.length
+            ? reference.reasons.join("; ")
+            : "";
+          wardrobeReferences.appendChild(image);
+        });
+
+        const notes = payload.taste_notes || [];
+        tasteNotes.textContent = notes.join(" · ");
 
         if (payload.vision_available === false) {
           wardrobeHint.textContent =
@@ -968,6 +1032,37 @@ HTML_PAGE = """<!doctype html>
 
       wardrobePhoto.addEventListener("change", () => {
         if (wardrobePhoto.files.length) wardrobeForm.requestSubmit();
+      });
+
+      referencePhoto.addEventListener("change", async () => {
+        const file = referencePhoto.files[0];
+
+        if (!file) return;
+
+        const form = new FormData();
+        form.append("liked", referenceLiked.value);
+        form.append("photo", file, file.name);
+
+        setWardrobeBusy(true);
+
+        try {
+          const payload = await wardrobeRequest(
+            "POST",
+            "/api/wardrobe/references",
+            form
+          );
+          referencePhoto.value = "";
+          await loadWardrobe();
+          addAssistantMessage(
+            payload.reading && (payload.reading.reasons || []).length
+              ? `Запомнила. Что именно зацепило: ${payload.reading.reasons.join("; ")}.`
+              : "Запомнила фото как образец вкуса."
+          );
+        } catch (error) {
+          addAssistantMessage(`Не смогла запомнить фото: ${error.message}`);
+        } finally {
+          setWardrobeBusy(false);
+        }
       });
 
       critiqueButton.addEventListener("click", () => lookPhoto.click());

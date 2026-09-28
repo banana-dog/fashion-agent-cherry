@@ -114,12 +114,15 @@ def test_uploaded_card_shows_its_photo(browser_page, tmp_path):
     browser_page.locator("#wardrobePhoto").set_input_files(str(path))
     browser_page.wait_for_selector(".wardrobe-card")
 
-    loaded = browser_page.evaluate(
+    # The card appears before its image finishes loading.
+    browser_page.wait_for_function(
         "() => { const img = document.querySelector('.wardrobe-card img');"
         " return Boolean(img && img.complete && img.naturalWidth > 0); }"
     )
 
-    assert loaded is True
+    assert browser_page.evaluate(
+        "() => document.querySelector('.wardrobe-card img').naturalWidth"
+    ) > 0
 
 
 def test_a_card_can_be_deleted(browser_page, tmp_path):
@@ -156,6 +159,49 @@ def test_photo_is_kept_out_of_the_chat_log(browser_page, tmp_path):
 
     browser_page.locator("#wardrobePhoto").set_input_files(str(path))
     browser_page.wait_for_selector(".wardrobe-card")
+
+    assert browser_page.locator(".messages img").count() == 0
+
+
+def test_reference_photo_is_shown_as_a_taste_sample(browser_page, tmp_path):
+    path = tmp_path / "reference.jpg"
+    path.write_bytes(jpeg())
+
+    browser_page.locator("#referenceLiked").select_option("1")
+    browser_page.locator("#referencePhoto").set_input_files(str(path))
+
+    browser_page.wait_for_selector("#wardrobeReferences img")
+
+    assert browser_page.locator("#wardrobeReferences img").count() == 1
+    assert browser_page.locator("#wardrobeReferences img.liked").count() == 1
+
+
+def test_a_disliked_reference_is_marked_apart(browser_page, tmp_path):
+    path = tmp_path / "reference.jpg"
+    path.write_bytes(jpeg())
+
+    browser_page.locator("#referenceLiked").select_option("0")
+    browser_page.locator("#referencePhoto").set_input_files(str(path))
+    browser_page.wait_for_selector("#wardrobeReferences img.disliked")
+
+    assert browser_page.locator("#wardrobeReferences img.disliked").count() == 1
+
+
+def test_the_panel_asks_for_a_reference_when_there_is_none(browser_page):
+    browser_page.wait_for_function("!document.getElementById('wardrobe').hidden")
+
+    assert "Пришли фото образов" in browser_page.locator("#tasteNotes").inner_text()
+
+
+def test_adding_a_reference_is_announced_in_the_chat(browser_page, tmp_path):
+    path = tmp_path / "reference.jpg"
+    path.write_bytes(jpeg())
+
+    browser_page.locator("#referencePhoto").set_input_files(str(path))
+    browser_page.wait_for_function(
+        "[...document.querySelectorAll('.message')].some(m =>"
+        " m.textContent.includes('образец вкуса'))"
+    )
 
     assert browser_page.locator(".messages img").count() == 0
 

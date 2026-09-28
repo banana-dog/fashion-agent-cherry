@@ -11,6 +11,8 @@ from http.server import ThreadingHTTPServer
 import pytest
 from PIL import Image
 
+JPEG_HEAD = b"\xff\xd8\xff\xe0\x00\x10JFIF"
+
 
 def jpeg() -> bytes:
     buffer = io.BytesIO()
@@ -248,6 +250,58 @@ def test_patching_a_missing_item(server):
     )
 
     assert status == 404
+
+
+def test_wardrobe_listing_explains_the_photo_signal(server, monkeypatch):
+    base, wardrobe_module = server
+    wardrobe_module.reset_wardrobe()
+
+    from fashion_agent.wardrobe import get_wardrobe
+
+    client = Client(base)
+    client.request("GET", "/")
+
+    wardrobe = get_wardrobe()
+    wardrobe.add_reference(
+        "demo-user",
+        image_path=wardrobe.store_image(
+            "demo-user", JPEG_HEAD, ".jpg", reference=True
+        ),
+        liked=True,
+        attributes=["color:cream", "fit:oversized"],
+    )
+    wardrobe.add_reference(
+        "demo-user",
+        image_path=wardrobe.store_image(
+            "demo-user", JPEG_HEAD, ".jpg", reference=True
+        ),
+        liked=False,
+        attributes=["fit:skinny"],
+    )
+
+    status, payload = client.request("GET", "/api/wardrobe")
+
+    assert status == 200
+    assert payload["reference_count"] == 2
+    assert {reference["liked"] for reference in payload["references"]} == {
+        True,
+        False,
+    }
+    assert payload["taste_notes"]
+    assert any("cream" in note for note in payload["taste_notes"])
+    assert any("skinny" in note for note in payload["taste_notes"])
+
+
+def test_wardrobe_listing_prompts_for_a_first_reference(server):
+    base, _module = server
+    client = Client(base)
+    client.request("GET", "/")
+
+    _status, payload = client.request("GET", "/api/wardrobe")
+
+    from fashion_agent.reference_taste import NO_SIGNAL_NOTE
+
+    assert payload["taste_notes"] == [NO_SIGNAL_NOTE]
 
 
 def test_references_are_stored_and_deleted(server):

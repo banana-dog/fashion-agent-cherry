@@ -329,7 +329,8 @@ class Wardrobe:
         if worn_only:
             query += " AND worn = 1"
 
-        query += " ORDER BY created_at DESC"
+        # rowid breaks ties so the order is stable within one millisecond.
+        query += " ORDER BY created_at DESC, rowid DESC"
 
         with self._connect() as connection:
             rows = connection.execute(query, (user_id,)).fetchall()
@@ -461,7 +462,7 @@ class Wardrobe:
         with self._connect() as connection:
             rows = connection.execute(
                 "SELECT * FROM wardrobe_references WHERE user_id = ? "
-                "ORDER BY created_at DESC",
+                "ORDER BY created_at DESC, rowid DESC",
                 (user_id,),
             ).fetchall()
 
@@ -510,6 +511,21 @@ class Wardrobe:
             self.delete_reference(user_id, row["id"])
 
         return len(rows)
+
+    def reference_preferences(
+        self,
+        user_id: str,
+        limit: int = 40,
+    ) -> list[dict]:
+        """Preferences drawn from the reference photos the client has sent."""
+        from fashion_agent.reference_taste import (
+            reference_preferences as infer,
+        )
+        from fashion_agent.reference_taste import (
+            usable_references,
+        )
+
+        return infer(usable_references(self.references(user_id), limit))
 
 
 def _safe_segment(value: str) -> str:

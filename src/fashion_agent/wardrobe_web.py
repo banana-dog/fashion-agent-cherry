@@ -9,6 +9,7 @@ import json
 from http import HTTPStatus
 
 from fashion_agent.client_profile import load_client_profile
+from fashion_agent.reference_taste import NO_SIGNAL_NOTE, profile_lines
 from fashion_agent.vision import (
     VisionCallFailed,
     VisionUnavailable,
@@ -107,6 +108,7 @@ def list_wardrobe(
 ) -> None:
     wardrobe = wardrobe or get_wardrobe()
     items = [serialise_item(item) for item in wardrobe.items(user_id)]
+    references = wardrobe.references(user_id)
 
     send_json(
         handler,
@@ -115,6 +117,18 @@ def list_wardrobe(
             "items": items,
             "count": len(items),
             "vision_available": get_vision_client().available,
+            "references": [
+                {
+                    "id": reference["id"],
+                    "liked": reference["liked"],
+                    "image_url": f"/api/wardrobe/reference-images/{reference['id']}",
+                    "reasons": reference["reasons"],
+                    "confirmed": bool(reference["attributes"]),
+                }
+                for reference in references
+            ],
+            "reference_count": len(references),
+            "taste_notes": profile_lines(references) or [NO_SIGNAL_NOTE],
         },
     )
 
