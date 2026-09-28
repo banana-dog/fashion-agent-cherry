@@ -423,6 +423,16 @@ HTML_PAGE = """<!doctype html>
         font-size: 15px;
       }
 
+      .outfit-composition {
+        margin: 6px 0 0;
+        font-size: 13px;
+        color: var(--accent);
+      }
+
+      .product-card.owned {
+        border-color: var(--accent);
+      }
+
       .product-source {
         margin: 6px 0 0;
         color: var(--muted);
@@ -628,8 +638,15 @@ HTML_PAGE = """<!doctype html>
 
             const header = document.createElement("div");
             header.className = "outfit-meta";
+            const owned = outfit.owned_count || 0;
+            const toBuy = outfit.to_buy_count || 0;
+            const composition = owned
+              ? `${owned} из вашего гардероба${toBuy ? `, купить ${toBuy}` : ", ничего покупать не нужно"}`
+              : `${toBuy} купить`;
+
             header.innerHTML = `
-              <strong>${outfitIndex + 1}. Образ — ${escapeHtml(formatPrice(outfit.total_price, outfit.currency))}</strong>
+              <strong>${outfitIndex + 1}. Образ — ${escapeHtml(formatPrice(outfit.total_price, outfit.currency))} к покупке</strong>
+              <p class="outfit-composition">${escapeHtml(composition)}</p>
               ${outfit.explanation ? `<p>${escapeHtml(outfit.explanation)}</p>` : ""}
             `;
             outfitNode.appendChild(header);
@@ -645,22 +662,27 @@ HTML_PAGE = """<!doctype html>
             itemsNode.className = "product-grid";
 
             outfit.items.forEach((item) => {
+              const isOwned = item.origin === "wardrobe";
               const itemNode = document.createElement("article");
-              itemNode.className = "product-card";
+              itemNode.className = "product-card" + (isOwned ? " owned" : "");
 
               const imageHtml = item.image_url
                 ? `<img src="${encodeURI(item.image_url)}" alt="${escapeHtml(item.title)}" loading="lazy">`
                 : `<div class="product-image-fallback">Нет фото</div>`;
 
-              const titleHtml = item.url
+              const titleHtml = !isOwned && item.url
                 ? `<a href="${encodeURI(item.url)}" target="_blank" rel="noreferrer">${escapeHtml(item.title)}</a>`
                 : `<span>${escapeHtml(item.title)}</span>`;
+
+              const priceHtml = isOwned
+                ? '<p class="product-price">уже есть</p>'
+                : `<p class="product-price">${escapeHtml(formatPrice(item.price, item.currency))}</p>`;
 
               itemNode.innerHTML = `
                 <div class="product-image">${imageHtml}</div>
                 <div class="product-copy">
                   <h3 class="product-title">${titleHtml}</h3>
-                  <p class="product-price">${escapeHtml(formatPrice(item.price, item.currency))}</p>
+                  ${priceHtml}
                   <p class="product-source">${escapeHtml(item.source)}</p>
                 </div>
               `;
@@ -1022,6 +1044,8 @@ def serialize_outfits(
             "id": outfit["id"],
             "total_price": outfit["total_price"],
             "currency": outfit["currency"],
+            "owned_count": outfit.get("owned_count", 0),
+            "to_buy_count": outfit.get("to_buy_count", 0),
             "explanation": outfit.get(
                 "explanation",
                 "",
@@ -1038,6 +1062,7 @@ def serialize_outfits(
                     "price": item["price"],
                     "currency": item["currency"],
                     "source": item["source"],
+                    "origin": item.get("origin", "shop"),
                     "url": item.get("url"),
                     "image_url": item.get("image_url"),
                 }

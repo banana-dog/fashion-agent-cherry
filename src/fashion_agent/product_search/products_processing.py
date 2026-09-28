@@ -10,6 +10,51 @@ from fashion_agent.styleDNA import (
 )
 
 
+def score_candidate(
+    product: dict,
+    preferences: list[dict],
+    desired_attributes: set[str],
+) -> dict | None:
+    """Score one item on style and request fit, with no search-rank bonus.
+
+    Owned garments never went through a search, so they must compete on the
+    same terms as a bought one: what the client likes and what the request asks
+    for. Returns None when the item hard-conflicts with a stated dislike.
+    """
+    product_attributes = set(product.get("attributes", []))
+
+    if product_hard_conflicts(product, preferences):
+        return None
+
+    memory_matches = []
+
+    for preference in preferences:
+        preference_key = f"{preference['category']}:{preference['target']}"
+
+        if preference_key not in product_attributes:
+            continue
+
+        memory_matches.append(
+            {
+                "attribute": preference_key,
+                "score": preference_score(preference),
+            }
+        )
+
+    style_score = sum(match["score"] for match in memory_matches)
+    request_matches = product_attributes & desired_attributes
+    request_score = 0.2 * len(request_matches)
+
+    return {
+        **product,
+        "style_score": round(style_score, 3),
+        "request_score": round(request_score, 3),
+        "score": round(style_score + request_score, 3),
+        "memory_matches": memory_matches,
+        "request_matches": sorted(request_matches),
+    }
+
+
 def rank_products(
     state: FashionState,
 ):

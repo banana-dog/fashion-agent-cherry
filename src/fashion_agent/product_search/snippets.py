@@ -67,6 +67,29 @@ COMPILED_COLORS = tuple(
     for pattern, target, suppresses in COLOR_PATTERNS
 )
 
+# A client's own words, so a phrase like "чёрное платье" can be matched against
+# an item carrying color:black.
+RUSSIAN_COLOR_WORDS = {
+    "black": "чёрный",
+    "white": "белый",
+    "cream": "кремовый",
+    "beige": "бежевый",
+    "gray": "серый",
+    "silver": "серебристый",
+    "gold": "золотой",
+    "blue": "синий",
+    "navy": "тёмно-синий",
+    "purple": "фиолетовый",
+    "green": "зелёный",
+    "olive": "оливковый",
+    "red": "красный",
+    "burgundy": "бордовый",
+    "pink": "розовый",
+    "brown": "коричневый",
+    "orange": "оранжевый",
+    "yellow": "жёлтый",
+}
+
 SIZE_LETTERS = ("XXXS", "XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL", "4XL", "5XL")
 
 MARK = r"(?:\u20bd|руб(?:\.|лей)?|€|\$|£)"

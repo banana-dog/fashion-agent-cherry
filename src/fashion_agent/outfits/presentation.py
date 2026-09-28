@@ -172,9 +172,23 @@ def present_outfits(
         selected,
         start=1,
     ):
-        lines.append(f"\n{index}. Образ — {outfit['total_price']} {outfit['currency']}")
+        owned_count = outfit.get("owned_count", 0)
+        to_buy_count = outfit.get("to_buy_count", len(outfit["items"]))
+        lines.append(f"\n{index}. Образ — {outfit['total_price']} {outfit['currency']} к покупке")
+        lines.append(
+            f"  Состав: {owned_count} из вашего гардероба, купить {to_buy_count}"
+        )
 
         for item in outfit["items"]:
+            if item.get("origin") == "wardrobe":
+                lines.append(f"• {item['title']} — уже есть")
+                lines.append(f"  Гардероб: {item['source']}")
+
+                if item.get("image_url"):
+                    lines.append(f"  Фото: {item['image_url']}")
+
+                continue
+
             lines.append(f"• {item['title']} — {item['price']:.0f} {item['currency']}")
             lines.append(f"  Магазин: {item['source']}")
 
@@ -192,8 +206,10 @@ def present_outfits(
             )
         )
 
-        if outfit["issues"]:
-            lines.append("Нюансы: " + "; ".join(outfit["issues"]))
+        issues = outfit.get("issues") or []
+
+        if issues:
+            lines.append("Нюансы: " + "; ".join(issues))
 
     return {"messages": [AIMessage(content="\n".join(lines))]}
 

@@ -421,3 +421,115 @@ def test_search_plan_resets_products_and_reports(monkeypatch):
 
 def test_marketplace_any_is_available():
     assert Marketplace.ANY in list(Marketplace)
+
+
+def test_no_search_for_a_category_the_wardrobe_already_covers(monkeypatch):
+    search = ProductSearch(
+        category="shoes",
+        query="ботинки",
+        fallback_query="ботинки",
+    )
+    owned_top = ProductSearch(
+        category="top",
+        query="свитер",
+        fallback_query="свитер",
+    )
+
+    monkeypatch.setattr(
+        "fashion_agent.product_search.product_search.search_plan_extractor",
+        StubExtractor(SearchPlan(searches=[owned_top, search])),
+    )
+
+    result = create_search_plan(
+        {
+            "request": {"occasion": "на работу"},
+            "style_preferences": [],
+            "client_profile": {},
+            "wardrobe_items": [
+                {
+                    "category": "top",
+                    "title": "Свитер кремовый",
+                    "attributes": ["color:cream"],
+                }
+            ],
+            "resolved_style": None,
+            "retrieved_outfit_formulas": [],
+            "retrieved_trends": [],
+        },
+        Runtime(),
+    )
+
+    categories = [entry["category"] for entry in result["search_plan"]]
+
+    # The wardrobe answers for the top, so only the shoes are worth a credit.
+    assert "top" not in categories
+    assert categories == ["shoes"]
+
+
+def test_a_wardrobe_covering_everything_still_produces_a_plan(monkeypatch):
+    search = ProductSearch(
+        category="top",
+        query="свитер",
+        fallback_query="свитер",
+    )
+
+    monkeypatch.setattr(
+        "fashion_agent.product_search.product_search.search_plan_extractor",
+        StubExtractor(SearchPlan(searches=[search])),
+    )
+
+    result = create_search_plan(
+        {
+            "request": {"occasion": "на работу"},
+            "style_preferences": [],
+            "client_profile": {},
+            "wardrobe_items": [
+                {
+                    "category": "top",
+                    "title": "Свитер кремовый",
+                    "attributes": ["color:cream"],
+                }
+            ],
+            "resolved_style": None,
+            "retrieved_outfit_formulas": [],
+            "retrieved_trends": [],
+        },
+        Runtime(),
+    )
+
+    assert [entry["category"] for entry in result["search_plan"]] == ["top"]
+    assert result["search_plan"][0]["query"] == ""
+
+
+def test_a_named_garment_is_still_searched_for_alongside(monkeypatch):
+    search = ProductSearch(
+        category="top",
+        query="свитер",
+        fallback_query="свитер",
+    )
+
+    monkeypatch.setattr(
+        "fashion_agent.product_search.product_search.search_plan_extractor",
+        StubExtractor(SearchPlan(searches=[search])),
+    )
+
+    result = create_search_plan(
+        {
+            "request": {"occasion": "на работу", "must_use": ["мой кремовый свитер"]},
+            "style_preferences": [],
+            "client_profile": {},
+            "wardrobe_items": [
+                {
+                    "category": "top",
+                    "title": "Свитер кремовый",
+                    "attributes": ["color:cream"],
+                }
+            ],
+            "resolved_style": None,
+            "retrieved_outfit_formulas": [],
+            "retrieved_trends": [],
+        },
+        Runtime(),
+    )
+
+    assert [entry["category"] for entry in result["search_plan"]] == ["top"]

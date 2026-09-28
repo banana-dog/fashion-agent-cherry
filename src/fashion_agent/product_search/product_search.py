@@ -27,6 +27,10 @@ from fashion_agent.product_search.sources import (
     SourceUnavailable,
 )
 from fashion_agent.states import FashionState
+from fashion_agent.wardrobe_outfit import (
+    matches_must_use,
+    searchable_categories,
+)
 
 search_plan_extractor = llm.with_structured_output(SearchPlan)
 
@@ -186,7 +190,16 @@ Do not create more than one search for the same category.
     known_formula_ids = {formula["id"] for formula in retrieved_formulas}
     known_trend_ids = {trend["id"] for trend in retrieved_trends}
 
+    owned_categories = searchable_categories(state.get("wardrobe_items", []))
+    must_use = (state.get("request") or {}).get("must_use", [])
+    forced_categories = {
+        item["category"]
+        for item in state.get("wardrobe_items", [])
+        if matches_must_use(item, must_use)
+    }
+
     sanitized_searches = []
+    covered_by_wardrobe: dict[str, str] = {}
 
     for search in plan.searches:  # type: ignore
         payload = search.model_dump()
@@ -206,7 +219,38 @@ Do not create more than one search for the same category.
             )
             if trend_id in known_trend_ids
         ]
+
+        category = payload["category"]
+
+        # No search for a category the wardrobe already answers for. This is
+        # not only cheaper, it is the point: the client should not be sold a
+        # second pair of the shoes they own.
+        if category in owned_categories and category not in forced_categories:
+            covered_by_wardrobe[category] = category
+            continue
+
         sanitized_searches.append(payload)
+
+    if covered_by_wardrobe and not sanitized_searches:
+        # The whole outfit can come from the wardrobe, so the plan is empty and
+        # the graph still has a category to assemble.
+        sanitized_searches = [
+            {
+                "category": category,
+                "query": "",
+                "fallback_query": "",
+                "desired_attributes": [],
+                "keywords": [],
+                "colors": [],
+                "brand": None,
+                "price_min": None,
+                "max_price": None,
+                "formula_ids": [],
+                "trend_ids": [],
+                "required": True,
+            }
+            for category in covered_by_wardrobe
+        ]
 
     return {
         "search_plan": sanitized_searches,

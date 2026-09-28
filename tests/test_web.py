@@ -101,6 +101,8 @@ def test_serialize_outfits_keeps_image_and_click_target():
                 "id": "outfit-001",
                 "total_price": 200,
                 "currency": "USD",
+                "owned_count": 0,
+                "to_buy_count": 1,
                 "explanation": "works",
                 "items": [
                     {
@@ -122,6 +124,8 @@ def test_serialize_outfits_keeps_image_and_click_target():
             "id": "outfit-001",
             "total_price": 200,
             "currency": "USD",
+            "owned_count": 0,
+            "to_buy_count": 1,
             "explanation": "works",
             "collage_data_url": "data:image/png;base64,xyz",
             "issues": [],
@@ -132,6 +136,7 @@ def test_serialize_outfits_keeps_image_and_click_target():
                     "price": 200,
                     "currency": "USD",
                     "source": "Shop",
+                    "origin": "shop",
                     "url": "https://example.com/red-shoes",
                     "image_url": "https://example.com/red-shoes.jpg",
                 }

@@ -11,6 +11,8 @@ from fashion_agent.llm import Context, llm
 from fashion_agent.states import FashionState, PreferenceExtraction
 from fashion_agent.storage import store_namespace
 from fashion_agent.taste_quiz import TasteQuiz
+from fashion_agent.wardrobe import get_wardrobe
+from fashion_agent.wardrobe_outfit import owned_items
 
 preference_extractor = llm.with_structured_output(PreferenceExtraction)
 
@@ -113,9 +115,16 @@ def load_style_memory(
         runtime.context.user_id,
     )
 
+    request = state.get("request") or {}
+    wardrobe = owned_items(
+        get_wardrobe().items(runtime.context.user_id),
+        occasion=request.get("occasion"),
+    )
+
     return {
         "style_preferences": preferences,
         "client_profile": profile.model_dump(mode="json"),
+        "wardrobe_items": wardrobe,
     }
 
 

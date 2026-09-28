@@ -15,10 +15,22 @@ from fashion_agent.outfits.scoring import (
     outfit_formula_score,
     outfit_trend_score,
 )
+from fashion_agent.product_search.products_processing import score_candidate
 from fashion_agent.states import FashionState
+from fashion_agent.wardrobe_outfit import (
+    WARDROBE_BONUS,
+    forced_items,
+)
+from fashion_agent.wardrobe_outfit import (
+    by_category as group_wardrobe_by_category,
+)
 
 FORMULA_SCORE_WEIGHT = 0.4
 TREND_SCORE_WEIGHT = 0.15
+
+# A required category is never left to the wardrobe alone, because an outfit
+# built from nothing at all is not an outfit.
+MAX_OWNED_PER_CATEGORY = 4
 
 
 def build_outfits(
@@ -44,6 +56,26 @@ def build_outfits(
         "style_preferences",
         [],
     )
+    owned = state.get("wardrobe_items", [])
+    owned_by_category = group_wardrobe_by_category(owned)
+    must_use = (state.get("request") or {}).get("must_use", [])
+    pinned = forced_items(owned, must_use)
+    preferences = state.get(
+        "style_preferences",
+        [],
+    )
+    desired_attributes = {
+        attribute
+        for search in state["search_plan"]
+        for attribute in search.get("desired_attributes", [])
+    }
+    scored_wardrobe = [
+        scored
+        for item in owned
+        if (scored := score_candidate(item, preferences, desired_attributes))
+        is not None
+    ]
+    owned_by_category = group_wardrobe_by_category(scored_wardrobe)
     diagnostics = build_assembly_diagnostics(
         state,
         search_by_category,
@@ -69,49 +101,62 @@ def build_outfits(
                 "уточнить цену вручную: площадка не показала её в выдаче",
             )
 
-        if search["required"] and not products:
-            missing_entry = build_missing_category_entry(
-                category=category,
-                raw_products=raw_products_by_category[category],
-                ranked_products=ranked_products_by_category[category],
-                preferences=preferences,
-            )
-            diagnostics["missing_categories"].append(missing_entry)
+        wardrobe_options = list(owned_by_category.get(category, []))[
+            :MAX_OWNED_PER_CATEGORY
+        ]
+        options = products + wardrobe_options
 
-            limit = search.get("max_price")
-
-            if missing_entry["raw_found"] == 0:
-                if limit is not None:
-                    register_relaxation(
-                        diagnostics,
-                        "увеличить лимит на категорию "
-                        f"«{category_label(category)}» "
-                        f"выше {format_money(limit, diagnostics['currency'] or '')}",
-                    )
-                register_relaxation(
-                    diagnostics,
-                    f"расширить поисковый запрос для {category_label(category)}",
+        # Only a category with nothing to wear and nothing to buy is missing.
+        if search["required"] and not options:
+            if not owned_by_category.get(category):
+                missing_entry = build_missing_category_entry(
+                    category=category,
+                    raw_products=raw_products_by_category[category],
+                    ranked_products=ranked_products_by_category[category],
+                    preferences=preferences,
                 )
-            elif missing_entry["conflicts"]:
-                for attribute in missing_entry["conflicts"]:
+                diagnostics["missing_categories"].append(missing_entry)
+
+                limit = search.get("max_price")
+
+                if missing_entry["raw_found"] == 0:
+                    if limit is not None:
+                        register_relaxation(
+                            diagnostics,
+                            "увеличить лимит на категорию "
+                            f"\u00ab{category_label(category)}\u00bb "
+                            f"выше {format_money(limit, diagnostics['currency'] or '')}",
+                        )
                     register_relaxation(
                         diagnostics,
-                        "временно разрешить "
-                        f"{attribute_label(attribute)} "
-                        "для этого образа",
+                        f"расширить поисковый запрос для {category_label(category)}",
+                    )
+                elif missing_entry["conflicts"]:
+                    for attribute in missing_entry["conflicts"]:
+                        register_relaxation(
+                            diagnostics,
+                            "временно разрешить "
+                            f"{attribute_label(attribute)} "
+                            "для этого образа",
+                        )
+                else:
+                    register_relaxation(
+                        diagnostics,
+                        "ослабить требования для категории "
+                        f"\u00ab{category_label(category)}\u00bb",
                     )
             else:
                 register_relaxation(
                     diagnostics,
-                    f"ослабить требования для категории «{category_label(category)}»",
+                    f"снять повод с вещью в гардеробе: "
+                    f"{category_label(category)} не подходит под него",
                 )
 
-        if search["required"]:
-            options = products
-        else:
-            options = [None, *products]
 
-        products_by_category[category] = options
+        if search["required"]:
+            products_by_category[category] = options
+        else:
+            products_by_category[category] = [None, *options]
 
     if diagnostics["missing_categories"]:
         diagnostics["failure_type"] = "missing_required_category"
@@ -125,10 +170,23 @@ def build_outfits(
 
     budget_max = state["request"].get("budget_max")  # type: ignore
     required_categories = diagnostics["required_categories"]
-    cheapest_required_total = sum(
-        min(product["price"] for product in ranked_products_by_category[category])
-        for category in required_categories
-    )
+    cheapest_per_category = []
+
+    for category in required_categories:
+        candidates = [
+            item["price"]
+            for item in (
+                products_by_category.get(category) or []
+            )
+            if item is not None and item.get("price") is not None
+        ]
+
+        if not candidates:
+            continue
+
+        cheapest_per_category.append(min(candidates))
+
+    cheapest_required_total = sum(cheapest_per_category)
     diagnostics["cheapest_required_total"] = round(
         cheapest_required_total,
         2,
@@ -189,6 +247,12 @@ def build_outfits(
         if not items:
             continue
 
+        if pinned and not any(
+            item["id"] == pinned_item["id"] for item in items
+            for pinned_item in pinned
+        ):
+            continue
+
         total_price = sum(item["price"] for item in items)
 
         if budget_max is not None and total_price > budget_max:
@@ -199,6 +263,10 @@ def build_outfits(
         if len(currencies) != 1:
             continue
 
+        owned_count = sum(
+            1 for item in items if item.get("origin") == "wardrobe"
+        )
+        reuse_score = WARDROBE_BONUS * owned_count / max(1, len(items))
         product_score = sum(item["score"] for item in items) / len(items)
         coherence_score = outfit_coherence_score(items)
         formula_score, matched_formula_ids = outfit_formula_score(
@@ -212,6 +280,7 @@ def build_outfits(
         base_score = (
             product_score
             + coherence_score
+            + reuse_score
             + FORMULA_SCORE_WEIGHT * formula_score
             + TREND_SCORE_WEIGHT * trend_score
         )
@@ -222,6 +291,9 @@ def build_outfits(
                 "items": items,
                 "total_price": total_price,
                 "currency": next(iter(currencies)),
+                "owned_count": owned_count,
+                "to_buy_count": len(items) - owned_count,
+                "reuse_score": round(reuse_score, 3),
                 "product_score": round(
                     product_score,
                     3,
