@@ -5,6 +5,12 @@ TASTE_QUIZ_HTML = r"""
   .taste-card { padding: 10px; background: white; color: var(--ink); border: 1px solid var(--line); }
   .taste-card img { display: block; width: 100%; height: auto; aspect-ratio: 3 / 5; max-height: 380px;
     object-fit: contain; margin-bottom: 12px; }
+  /* Kept in normal case: shouting a two-word Russian label helps nobody. */
+  .taste-card-caption { display: block; font-style: normal; font-size: 12px; color: var(--muted);
+    margin-bottom: 6px; }
+  /* A photo of the client must not read as a card from the collection. */
+  .taste-card-own { border-style: dashed; border-color: var(--accent); background: #fff8fa; }
+  .taste-card-own .taste-card-caption { color: var(--accent); font-weight: 600; }
   .taste-actions { display: flex; gap: 12px; margin-top: 14px; white-space: normal; }
   .taste-profile { border-left: 4px solid var(--accent) !important; }
   @media (max-width: 520px) {
@@ -53,9 +59,16 @@ TASTE_QUIZ_HTML = r"""
       const button = document.createElement("button");
       button.type = "button";
       button.className = "taste-card";
+      // A photo of the client is not a card from the collection, and the
+      // question is a different one: it is asking them to judge their own look.
+      if (card.kind === "reference") button.classList.add("taste-card-own");
+      button.dataset.kind = card.kind || "card";
       button.disabled = true;
       const img = document.createElement("img");
       img.alt = card.description;
+      const caption = document.createElement("em");
+      caption.className = "taste-card-caption";
+      caption.textContent = card.kind === "reference" ? "Ваше фото" : "Из коллекции";
       const label = document.createElement("span");
       label.textContent = "Этот образ ближе";
       img.addEventListener("load", () => {
@@ -66,7 +79,7 @@ TASTE_QUIZ_HTML = r"""
         label.textContent = "Фото не загрузилось. Можно пропустить пару.";
         button.disabled = true;
       });
-      button.append(img, label);
+      button.append(caption, img, label);
       button.addEventListener("click", () => submitTasteChoice(index === 0 ? "left" : "right"));
       grid.appendChild(button);
       img.src = card.image_url;

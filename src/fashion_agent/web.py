@@ -1622,6 +1622,18 @@ class CherryWebHandler(BaseHTTPRequestHandler):
             list_looks(self, self._user_id())
             return
 
+        if path.startswith("/api/wardrobe/references/") and path.endswith("/image"):
+            # The taste quiz shows a client's own photo beside a card, so the
+            # photo has to be fetchable. It is served only to its owner, like
+            # every other reference.
+            self._ensure_session()
+            serve_reference_image(
+                self,
+                self._user_id(),
+                self._reference_id_from_path(),
+            )
+            return
+
         if path.startswith("/api/wardrobe/images/"):
             self._ensure_session()
             serve_wardrobe_image(
@@ -1812,6 +1824,11 @@ class CherryWebHandler(BaseHTTPRequestHandler):
         SESSIONS[session_id] = session
         return session_id, session, True
 
+    def _reference_id_from_path(self) -> str:
+        # /api/wardrobe/references/<id>/image
+        parts = [part for part in urlsplit(self.path).path.split("/") if part]
+        return parts[3] if len(parts) > 3 else ""
+
     def _session_id_from_path(self) -> str:
         # /api/wardrobe/looks/<id>/<action>
         parts = [part for part in urlsplit(self.path).path.split("/") if part]
@@ -1936,8 +1953,13 @@ class CherryWebHandler(BaseHTTPRequestHandler):
             user_message = None
             if self.path == "/api/taste/next":
                 from fashion_agent.taste_quiz import TasteQuiz
+                from fashion_agent.wardrobe import get_wardrobe
 
-                response = TasteQuiz().next_pair(user_id, load_cards())
+                response = TasteQuiz().next_pair(
+                    user_id,
+                    load_cards(),
+                    get_wardrobe().references(user_id),
+                )
                 self._send_json(HTTPStatus.OK, response)
                 return
             if self.path == "/api/taste/answer":

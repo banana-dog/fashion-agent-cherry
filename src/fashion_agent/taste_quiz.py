@@ -92,6 +92,54 @@ def load_cards(path: Path | None = None) -> list[OutfitCard]:
     return cards
 
 
+# How often a round puts the client's own photo next to a card. Often enough to
+# teach from it, rarely enough that the quiz still feels like a quiz.
+MIXED_ROUND_CHANCE = 0.4
+
+
+def reference_side(reference: dict) -> dict:
+    """A client's photo, in the same shape a card is stored in.
+
+    The pair has to be readable by the same code either way, but it must never be
+    mistakable for a card: the client is being asked to choose against their own
+    photograph, and hiding that would make the question a different one.
+    """
+    reference_id = str(reference.get("id") or "")
+
+    return {
+        "id": f"ref:{reference_id}",
+        "kind": "reference",
+        "description": "Ваше фото",
+        "attributes": sorted(
+            value for value in (reference.get("attributes") or []) if isinstance(value, str)
+        ),
+        "image_url": f"/api/wardrobe/references/{reference_id}/image",
+    }
+
+
+def _is_mixed(cards: list[dict]) -> bool:
+    kinds = {card.get("kind", "card") for card in cards}
+
+    return kinds == {"card", "reference"}
+
+
+def _side_payload(card: dict) -> dict:
+    if card.get("kind") == "reference":
+        return {
+            "id": card["id"],
+            "kind": "reference",
+            "description": card.get("description") or "Ваше фото",
+            "image_url": card.get("image_url") or "",
+        }
+
+    return {
+        "id": card["id"],
+        "kind": "card",
+        "description": card["description"],
+        "image_url": OutfitCard.model_validate(card).public_image_url,
+    }
+
+
 def inferred_preferences(votes: list[dict]) -> list[dict]:
     """A conservative heuristic, not a calibrated probability of liking an item.
 
@@ -212,8 +260,19 @@ class TasteQuiz:
                 (user_id, json.dumps(sections, ensure_ascii=False)),
             )
 
-    def next_pair(self, user_id: str, cards: list[OutfitCard]) -> dict:
-        cards = [card for card in cards if card.duplicate_of is None]
+    def next_pair(
+        self,
+        user_id: str,
+        cards: list[OutfitCard],
+        references: list[dict] | None = None,
+    ) -> dict:
+        """Offer the next pair.
+
+        Once the client has sent photos of their own, those photos are worth
+        putting beside a curated card: the choice is easier to make against
+        something known than between two strangers' outfits.
+        """
+        cards = [card for card in cards if getattr(card, "duplicate_of", None) is None]
         with self._connect() as db:
             # Serializes simultaneous requests, so refreshes reuse the same round.
             db.execute("BEGIN IMMEDIATE")
@@ -230,25 +289,55 @@ class TasteQuiz:
 
             seen = set()
             exposure: Counter = Counter()
+
             for row in rows:
                 previous = json.loads(row["cards"])
                 ids = tuple(sorted(card["id"] for card in previous))
                 seen.add(ids)
                 exposure.update(ids)
+
             candidates = [
                 (left, right)
                 for left, right in combinations(cards, 2)
                 if tuple(sorted((left.id, right.id))) not in seen
                 and set(left.attributes) != set(right.attributes)
             ]
-            if not candidates:
-                return {"round_id": None, "cards": [], "answered": answered}
-            # Explore the collection first; random ties and sides reduce position bias.
-            random.shuffle(candidates)
-            left, right = min(
-                candidates, key=lambda pair: exposure[pair[0].id] + exposure[pair[1].id]
+            mixed = self._mixed_candidates(
+                cards,
+                references or [],
+                exposure,
+                seen=seen,
             )
-            pair = [left.model_dump(), right.model_dump()]
+            # Two rounds in a row against the client's own photo would turn the
+            # quiz into one long question about themselves. But that preference
+            # must not empty the quiz: with no card pair left to offer, the
+            # client's own photo is still the better question.
+            last_was_mixed = bool(rows) and _is_mixed(json.loads(rows[-1]["cards"]))
+
+            if candidates and last_was_mixed:
+                mixed = []
+
+            if mixed and (not candidates or random.random() < MIXED_ROUND_CHANCE):
+                pair = min(
+                    mixed,
+                    key=lambda sides: exposure[sides[0]["id"]]
+                    + exposure[sides[1]["id"]],
+                )
+            elif candidates:
+                # Explore the collection first; random ties and sides reduce
+                # position bias.
+                random.shuffle(candidates)
+                left, right = min(
+                    candidates,
+                    key=lambda sides: exposure[sides[0].id] + exposure[sides[1].id],
+                )
+                pair = [
+                    {**left.model_dump(), "kind": "card"},
+                    {**right.model_dump(), "kind": "card"},
+                ]
+            else:
+                return {"round_id": None, "cards": [], "answered": answered}
+
             random.shuffle(pair)
             round_id = str(uuid.uuid4())
             db.execute(
@@ -258,17 +347,55 @@ class TasteQuiz:
             return self._pair_payload(round_id, pair, answered)
 
     @staticmethod
+    def _mixed_candidates(
+        cards: list[OutfitCard],
+        references: list[dict],
+        exposure: Counter,
+        *,
+        seen: set,
+    ) -> list[list[dict]]:
+        """Pairs of one of the client's photos against one curated card.
+
+        A photo with nothing recognised on it is left out: putting it beside a
+        card would offer a choice between two things the system cannot tell
+        apart, and the answer would teach nothing.
+        """
+        if not references:
+            return []
+
+        result: list[list[dict]] = []
+
+        for reference in references:
+            attributes = [
+                value
+                for value in reference.get("attributes") or []
+                if isinstance(value, str) and ":" in value
+            ]
+
+            if not attributes:
+                continue
+
+            side = reference_side(reference)
+
+            for card in cards:
+                if card.id == side["id"]:
+                    continue
+
+                if not set(attributes) ^ set(card.attributes):
+                    continue
+
+                if tuple(sorted((side["id"], card.id))) in seen:
+                    continue
+
+                result.append([side, {**card.model_dump(), "kind": "card"}])
+
+        return result
+
+    @staticmethod
     def _pair_payload(round_id: str, cards: list[dict], answered: int) -> dict:
         return {
             "round_id": round_id,
-            "cards": [
-                {
-                    "id": card["id"],
-                    "description": card["description"],
-                    "image_url": OutfitCard.model_validate(card).public_image_url,
-                }
-                for card in cards
-            ],
+            "cards": [_side_payload(card) for card in cards],
             "answered": answered,
         }
 
