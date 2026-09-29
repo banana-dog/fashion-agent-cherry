@@ -27,6 +27,7 @@ from fashion_agent.client_profile import (
     load_client_profile,
 )
 from fashion_agent.look_session import LookStore
+from fashion_agent.purchases import summarise
 from fashion_agent.reference_taste import CATEGORY_HEADINGS, reference_preferences
 from fashion_agent.storage import SQLiteStore, build_store
 from fashion_agent.taste_quiz import TasteQuiz
@@ -265,12 +266,18 @@ def build(
     wardrobe: Wardrobe | None = None,
     looks: LookStore | None = None,
     quiz: TasteQuiz | None = None,
+    purchases=None,
 ) -> Cabinet:
     accounts = accounts or Accounts()
     store = store or build_store()
     wardrobe = wardrobe or get_wardrobe()
     looks = looks or LookStore()
     quiz = quiz or TasteQuiz()
+
+    if purchases is None:
+        from fashion_agent.purchases import get_purchase_store
+
+        purchases = get_purchase_store().purchases
 
     account = accounts.account_for(user_id)
     profile = load_client_profile(store, user_id)
@@ -310,16 +317,21 @@ def build(
             "Пока я ничего не знаю о вашем вкусе. Пришлите фото или ответьте на пару вопросов."
         )
 
-    # Nothing in the system records a purchase, so the section says that rather
-    # than filling it with what was recommended.
+    # Nothing in the system learns a purchase on its own, so the section is
+    # either what the client wrote down, or an admission that there is nothing.
+    recorded = purchases(user_id)
     cabinet.purchases = {
-        "known": False,
-        "reason": (
-            "Я не знаю, что вы купили: мне никто об этом не рассказывал. "
-            "Список покупок появится, если вы сами отметите вещь как купленную."
-        ),
-        "recommendations_pending": 0,
+        "known": bool(recorded),
+        "items": [item.model_dump(mode="json") for item in recorded],
+        **summarise(recorded).model_dump(),
     }
+
+    if not recorded:
+        cabinet.purchases["reason"] = (
+            "Я не знаю, что вы купили: мне никто об этом не рассказывал. "
+            "Отметьте купленное — и я смогу сказать, укладываетесь ли вы в бюджет "
+            "по факту, а не по ценам из поиска."
+        )
 
     return cabinet
 

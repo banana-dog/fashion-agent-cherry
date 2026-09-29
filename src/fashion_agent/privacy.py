@@ -92,6 +92,7 @@ class DataExport(BaseModel):
     look_sessions: list[dict] = Field(default_factory=list)
     taste_rounds: list[dict] = Field(default_factory=list)
     taste_dialogue: dict = Field(default_factory=dict)
+    purchases: list[dict] = Field(default_factory=list)
     images: list[ExportedImage] = Field(default_factory=list)
 
     @property
@@ -103,6 +104,7 @@ class DataExport(BaseModel):
             "references": len(self.references),
             "look_sessions": len(self.look_sessions),
             "taste_rounds": len(self.taste_rounds),
+            "purchases": len(self.purchases),
             "images": len(self.images),
         }
 
@@ -147,6 +149,9 @@ def collect(
             for row in quiz.rounds(user_id)
         ],
         taste_dialogue=quiz.dialogue(user_id),
+        purchases=[
+            item.model_dump(mode="json") for item in _purchases_of(user_id)
+        ],
     )
 
     for reference in references:
@@ -162,6 +167,12 @@ def collect(
             export.images.append(image)
 
     return export
+
+
+def _purchases_of(user_id: str) -> list:
+    from fashion_agent.purchases import get_purchase_store
+
+    return get_purchase_store().purchases(user_id)
 
 
 def _reference(reference: dict) -> dict:
@@ -273,6 +284,11 @@ def forget(
     _guard("images_on_disk", report, lambda: wardrobe.delete_user_images(user_id))
     _guard("look_sessions", report, lambda: report.ok("look_sessions", looks.delete_all(user_id)))
     _guard("taste_rounds", report, lambda: report.ok("taste_rounds", quiz.forget(user_id)))
+    _guard(
+        "purchases",
+        report,
+        lambda: report.ok("purchases", _forget_purchases(user_id)),
+    )
     _guard("profile", report, lambda: report.ok("profile", _drop(store, client_profile_namespace(user_id))))
     _guard(
         "style_preferences",
@@ -319,6 +335,12 @@ def _drop(
         ).rowcount
 
     return max(removed, 0)
+
+
+def _forget_purchases(user_id: str) -> int:
+    from fashion_agent.purchases import get_purchase_store
+
+    return get_purchase_store().forget(user_id)
 
 
 def _forget_account(

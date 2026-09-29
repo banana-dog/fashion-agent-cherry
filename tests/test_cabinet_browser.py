@@ -328,3 +328,112 @@ class TestIsolationOverHttp:
             httpd.server_close()
             reset_wardrobe()
             reset_look_store()
+
+
+class TestPurchaseFormInBrowser:
+    @pytest.fixture
+    def page(self, tmp_path, monkeypatch):
+        playwright_api = pytest.importorskip("playwright.sync_api")
+
+        monkeypatch.setenv("CHERRY_WARDROBE_DB", str(tmp_path / "wardrobe.sqlite3"))
+        monkeypatch.setenv("CHERRY_WARDROBE_IMAGES", str(tmp_path / "images"))
+        monkeypatch.setenv("CHERRY_LOOKS_DB", str(tmp_path / "looks.sqlite3"))
+        monkeypatch.setenv("CHERRY_TASTE_DB", str(tmp_path / "taste.sqlite3"))
+        monkeypatch.setenv("CHERRY_ACCOUNTS_DB", str(tmp_path / "accounts.sqlite3"))
+        monkeypatch.setenv("CHERRY_STORE_DB", str(tmp_path / "store.sqlite3"))
+
+        from fashion_agent.accounts import Accounts
+        from fashion_agent.look_session import reset_look_store
+        from fashion_agent.purchases import reset_purchase_store
+        from fashion_agent.wardrobe import reset_wardrobe
+
+        reset_wardrobe()
+        reset_look_store()
+        reset_purchase_store()
+        Accounts().register("mira", PHRASE)
+
+        from fashion_agent import web as web_module
+
+        httpd = ThreadingHTTPServer(("127.0.0.1", 0), web_module.CherryWebHandler)
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        base = f"http://127.0.0.1:{httpd.server_port}"
+
+        with playwright_api.sync_playwright() as playwright:
+            try:
+                browser = playwright.chromium.launch()
+            except playwright_api.Error as error:  # pragma: no cover
+                httpd.shutdown()
+                pytest.skip(f"chromium is unavailable: {error}")
+
+            page = browser.new_page(viewport={"width": 1000, "height": 1400})
+            errors: list[str] = []
+            page.on("pageerror", lambda error: errors.append(str(error)))
+            page.goto(base + "/")
+            page.evaluate(
+                "async () => fetch('/api/account/sign-in', {method: 'POST',"
+                " headers: {'Content-Type': 'application/json'},"
+                f" body: JSON.stringify({{login: 'mira', passphrase: '{PHRASE}'}})}})"
+            )
+            page.goto(base + "/me")
+
+            yield page
+
+            page.screenshot(path="/tmp/cherry-purchase.png", full_page=True)
+            browser.close()
+
+        httpd.shutdown()
+        httpd.server_close()
+        reset_wardrobe()
+        reset_look_store()
+        reset_purchase_store()
+
+        assert errors == [], f"page errors: {errors}"
+
+    def test_the_form_is_there_before_anything_is_recorded(self, page):
+        """A form that only appears once there is something to edit is unusable."""
+        assert page.locator("#buyForm").count() == 1
+        assert "не знаю" in page.inner_text("body")
+
+    def test_recording_a_purchase_shows_it(self, page):
+        page.fill('#buyForm input[name=title]', "Тренч чёрный")
+        page.fill('#buyForm input[name=paid]', "18900")
+        page.fill('#buyForm input[name=source]', "Lamoda")
+        page.click("#buyForm button")
+        page.wait_for_function(
+            "() => document.body.innerText.includes('Тренч чёрный')"
+        )
+
+        text = page.inner_text("body")
+
+        assert "18900" in text
+        assert "Всего: 18900" in text
+
+    def test_a_second_purchase_adds_to_the_total(self, page):
+        for title, price in (("Тренч", "18900"), ("Джемпер", "3100")):
+            page.fill('#buyForm input[name=title]', title)
+            page.fill('#buyForm input[name=paid]', price)
+            page.click("#buyForm button")
+            page.wait_for_function(
+                "expected => document.body.innerText.includes(expected)",
+                arg=title,
+            )
+
+        assert "Всего: 22000" in page.inner_text("body")
+
+    def test_a_purchase_without_a_price_is_still_recorded(self, page):
+        page.fill('#buyForm input[name=title]', "Джемпер")
+        page.click("#buyForm button")
+        page.wait_for_function(
+            "() => document.body.innerText.includes('Джемпер')"
+        )
+
+        assert "без цены" in page.inner_text("body")
+
+    def test_a_price_that_is_not_a_number_is_refused(self, page):
+        page.fill('#buyForm input[name=title]', "Тренч")
+        page.fill('#buyForm input[name=paid]', "дорого")
+        page.on("dialog", lambda dialog: dialog.accept())
+        page.click("#buyForm button")
+        page.wait_for_timeout(600)
+
+        assert "Тренч" not in page.inner_text("body").split("История покупок")[1]

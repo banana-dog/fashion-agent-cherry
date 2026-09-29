@@ -1803,6 +1803,21 @@ class CherryWebHandler(BaseHTTPRequestHandler):
             self._handle_cabinet_page()
             return
 
+        if path == "/api/purchases":
+            self._ensure_session()
+
+            from fashion_agent.purchases import get_purchase_store
+
+            items = get_purchase_store().purchases(self._user_id())
+            self._send_json(
+                HTTPStatus.OK,
+                {
+                    "items": [item.model_dump(mode="json") for item in items],
+                    "count": len(items),
+                },
+            )
+            return
+
         if self.path == "/api/cabinet":
             _session_id, session, _is_new = self._ensure_session()
 
@@ -1889,6 +1904,10 @@ class CherryWebHandler(BaseHTTPRequestHandler):
             self._handle_forget()
             return
 
+        if self.path == "/api/purchases":
+            self._handle_purchase_add()
+            return
+
         if self.path == "/api/trends/refresh":
             self._handle_trend_refresh()
             return
@@ -1938,6 +1957,11 @@ class CherryWebHandler(BaseHTTPRequestHandler):
                 self._user_id(),
                 path.rsplit("/", 1)[-1],
             )
+            return
+
+        if path.startswith("/api/purchases/"):
+            self._ensure_session()
+            self._handle_purchase_delete(path.rsplit("/", 1)[-1])
             return
 
         if path.startswith("/api/wardrobe/looks/"):
@@ -2207,6 +2231,60 @@ class CherryWebHandler(BaseHTTPRequestHandler):
             {"user_id": session["user_id"], "anonymous": True},
             set_cookie=_cookie(fresh),
         )
+
+    def _handle_purchase_add(self) -> None:
+        """A purchase exists because the client wrote it down."""
+        from fashion_agent.purchases import get_purchase_store
+
+        try:
+            payload = self._read_json()
+
+            if not isinstance(payload, dict):
+                raise TypeError("Ожидается JSON-объект.")
+
+            title = payload.get("title")
+            raw_price = payload.get("paid")
+
+            if not isinstance(title, str) or not title.strip():
+                raise ValueError("Напишите, что вы купили.")
+
+            paid = None
+
+            if raw_price not in (None, ""):
+                try:
+                    paid = float(str(raw_price).replace(",", "."))
+                except ValueError as error:
+                    raise ValueError("Цена должна быть числом.") from error
+
+            _session_id, session, _is_new = self._ensure_session()
+            purchase = get_purchase_store().add(
+                session["user_id"],
+                title=title,
+                paid=paid,
+                currency=str(payload.get("currency") or "RUB"),
+                source=payload.get("source"),
+                url=payload.get("url"),
+                wardrobe_item_id=payload.get("wardrobe_item_id"),
+            )
+        except (TypeError, ValueError) as error:
+            self._send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"error": str(error) or "Не удалось"},
+            )
+            return
+
+        self._send_json(HTTPStatus.OK, purchase.model_dump(mode="json"))
+
+    def _handle_purchase_delete(self, purchase_id: str) -> None:
+        from fashion_agent.purchases import get_purchase_store
+
+        _session_id, session, _is_new = self._ensure_session()
+
+        if not get_purchase_store().delete(session["user_id"], purchase_id):
+            self._send_json(HTTPStatus.NOT_FOUND, {"error": "not found"})
+            return
+
+        self._send_json(HTTPStatus.OK, {"ok": True})
 
     def _handle_cabinet_page(self) -> None:
         """One page with everything known about this person, gaps included."""

@@ -45,6 +45,14 @@ PAGE_STYLE = """
   .look { border-top: 1px solid #f0e7e2; padding: 8px 0; font-size: 14px; }
   .look:first-of-type { border-top: 0; }
   .look small { color: #8a7a74; }
+  form.buy { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+  form.buy input, form.buy select { padding: 6px 8px; border: 1px solid #e8ddd8;
+    border-radius: 8px; font-size: 13px; }
+  form.buy input[name=title] { flex: 1 1 180px; }
+  form.buy input[name=paid] { width: 110px; }
+  form.buy button { padding: 6px 12px; border: 1px solid #b8446a; background: #b8446a;
+    color: white; border-radius: 8px; font-size: 13px; cursor: pointer; }
+  form.buy .note { font-size: 12px; color: #8a7a74; width: 100%; }
 </style>
 """
 
@@ -190,11 +198,49 @@ def _looks(cabinet: Cabinet) -> str:
 def _purchases(cabinet: Cabinet) -> str:
     purchases = cabinet.purchases
 
-    return (
-        '<section><h2>История покупок</h2>'
-        f'<p class="empty">{_escape(purchases.get("reason", "не отслеживается"))}</p>'
-        "</section>"
+    if not purchases.get("known"):
+        return (
+            '<section><h2>История покупок</h2>'
+            f'<p class="empty">{_escape(purchases.get("reason", "не отслеживается"))}</p>'
+            # The way to fill this section is on the page even while it is empty;
+            # a form that only appears once there is something to edit is a form
+            # nobody can ever start with.
+            f"{_buy_form()}</section>"
+        )
+
+    rows = []
+
+    for item in purchases.get("items", []):
+        price = (
+            f"{item['paid']:g} {_escape(item['currency'])}"
+            if item.get("paid") is not None
+            else "без цены"
+        )
+        link = f' — <a href="{_escape(item["url"])}">ссылка</a>' if item.get("url") else ""
+        rows.append(f"<li>{_escape(item['title'])}: {price}{link}</li>")
+
+    total = purchases.get("total", 0)
+    summary = (
+        f'<p class="empty">Всего: {total:g} {purchases.get("currency", "RUB")}'
+        f" за {purchases.get('count', 0)} покупок</p>"
     )
+
+    return (
+        '<section><h2>История покупок '
+        f'<span class="count">{purchases.get("count", 0)}</span></h2>'
+        f'<ul>{"".join(rows)}</ul>{summary}{_buy_form()}</section>'
+    )
+
+
+def _buy_form() -> str:
+    return """<form class="buy" id="buyForm">
+      <input name="title" placeholder="Что купили" required>
+      <input name="paid" placeholder="Цена" inputmode="decimal">
+      <input name="source" placeholder="Магазин">
+      <button type="submit">Записать</button>
+      <span class="note">Я записываю только то, что вы сами сказали: цену из
+      поиска я знаю, а цену в кассе — нет.</span>
+    </form>"""
 
 
 def _gaps(cabinet: Cabinet) -> str:
@@ -228,4 +274,22 @@ def render(cabinet: Cabinet) -> str:
 {_references(cabinet)}
 {_looks(cabinet)}
 {_purchases(cabinet)}
-</div></body></html>"""
+</div>
+<script>
+  const form = document.getElementById("buyForm");
+  if (form) {{
+    form.addEventListener("submit", async (event) => {{
+      event.preventDefault();
+      const data = Object.fromEntries(new FormData(form).entries());
+      if (data.paid === "") delete data.paid;
+      const response = await fetch("/api/purchases", {{
+        method: "POST",
+        headers: {{"Content-Type": "application/json"}},
+        body: JSON.stringify(data),
+      }});
+      if (response.ok) location.reload();
+      else alert((await response.json()).error || "Не получилось записать.");
+    }});
+  }}
+</script>
+</body></html>"""
