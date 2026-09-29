@@ -288,6 +288,30 @@ class TasteQuiz:
                 for row in rows
             ]
 
+    def rounds(self, user_id: str) -> list[dict]:
+        """Every pair ever shown, for an export."""
+        with self._connect() as db:
+            rows = db.execute(
+                "SELECT id, choice, created_at FROM taste_rounds "
+                "WHERE user_id = ? ORDER BY rowid",
+                (user_id,),
+            ).fetchall()
+
+        return [dict(row) for row in rows]
+
+    def forget(self, user_id: str) -> int:
+        """The whole taste history, for a request to be forgotten."""
+        with self._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            removed = db.execute(
+                "DELETE FROM taste_rounds WHERE user_id = ?", (user_id,)
+            ).rowcount
+            db.execute(
+                "DELETE FROM taste_dialogues WHERE user_id = ?", (user_id,)
+            )
+
+        return removed
+
     def dialogue(
         self,
         user_id: str,

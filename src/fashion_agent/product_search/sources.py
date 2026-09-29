@@ -218,6 +218,24 @@ class ResponseCache:
 
         return record["payload"]
 
+    def clear(self) -> int:
+        """Drop everything cached, and say how many entries went.
+
+        A cached answer can quote what a client said, so it should not outlive a
+        request to be forgotten.
+        """
+        if not self.path.exists():
+            return 0
+
+        try:
+            count = len(json.loads(self.path.read_text(encoding="utf-8")))
+        except (ValueError, OSError):
+            count = 0
+
+        self.path.unlink(missing_ok=True)
+
+        return count
+
     def set(self, key: str, payload: dict) -> None:
         records = {}
 

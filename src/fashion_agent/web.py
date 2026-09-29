@@ -588,6 +588,8 @@ HTML_PAGE = """<!doctype html>
           <div class="account" id="accountBox">
             <span class="account-name" id="accountName">Гость</span>
             <button type="button" class="secondary" id="accountOpen">Войти</button>
+            <button type="button" class="secondary" id="accountExport" hidden>Мои данные</button>
+            <button type="button" class="secondary" id="accountForget" hidden>Удалить всё</button>
           </div>
           <label>
             Locale
@@ -836,12 +838,18 @@ HTML_PAGE = """<!doctype html>
       function showAccount(data) {
         const name = document.getElementById("accountName");
         const button = document.getElementById("accountOpen");
+        const exporting = document.getElementById("accountExport");
+        const forgetting = document.getElementById("accountForget");
         if (data.anonymous) {
           name.textContent = "Гость";
           button.textContent = "Войти или зарегистрироваться";
+          exporting.hidden = false;
+          forgetting.hidden = true;
         } else {
           name.textContent = data.login;
           button.textContent = "Выйти";
+          exporting.hidden = false;
+          forgetting.hidden = false;
         }
       }
 
@@ -884,6 +892,51 @@ HTML_PAGE = """<!doctype html>
         addAssistantMessage("Вышли. Гардероб этого аккаунта остался на месте.");
       }
 
+      async function exportData() {
+        const response = await fetch("/api/account/export");
+        if (!response.ok) {
+          addAssistantMessage("Не смогла собрать выгрузку.");
+          return;
+        }
+        const blob = await response.blob();
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "cherry-data.zip";
+        link.click();
+        URL.revokeObjectURL(link.href);
+        addAssistantMessage(
+          "Готово: архив со всем, что я о тебе знаю, и с твоими фотографиями."
+        );
+      }
+
+      async function forgetMe() {
+        if (!confirm(
+          "Удалить всё: гардероб, фотографии, вкус, профиль и аккаунт?\\n"
+          + "Отменить это будет нельзя.",
+        )) return;
+
+        const response = await fetch("/api/account/forget", {method: "POST"});
+        const data = await response.json();
+        if (!response.ok) {
+          addAssistantMessage("Не смогла удалить: " + (data.error || "ошибка"));
+          return;
+        }
+        const lines = ["Удалено:"];
+        for (const [store, count] of Object.entries(data.removed || {})) {
+          if (count) lines.push(`• ${store}: ${count}`);
+        }
+        for (const [store, reason] of Object.entries(data.failed || {})) {
+          lines.push(`• ${store}: НЕ УДАЛОСЬ (${reason})`);
+        }
+        addAssistantMessage(lines.join("\\n"));
+        if (!data.complete) {
+          addAssistantMessage(
+            "Часть данных убрать не вышло. Напиши мне об этом — я попробую снова.",
+          );
+        }
+        showAccount({anonymous: true, login: null});
+      }
+
       document.getElementById("accountOpen").addEventListener("click", async () => {
         try {
           const who = await (await fetch("/api/account")).json();
@@ -896,6 +949,9 @@ HTML_PAGE = """<!doctype html>
           addAssistantMessage("Не смогла связаться с сервером.");
         }
       });
+
+      document.getElementById("accountExport").addEventListener("click", exportData);
+      document.getElementById("accountForget").addEventListener("click", forgetMe);
       fetch("/api/account").then(r => r.json()).then(showAccount).catch(() => {});
 
       async function sendMessage(message) {
@@ -1693,6 +1749,10 @@ class CherryWebHandler(BaseHTTPRequestHandler):
             list_looks(self, self._user_id())
             return
 
+        if path == "/api/account/export":
+            self._handle_export()
+            return
+
         if path == "/api/account":
             _session_id, session, _is_new = self._ensure_session()
             account = get_accounts().account_for(session["user_id"])
@@ -1808,6 +1868,10 @@ class CherryWebHandler(BaseHTTPRequestHandler):
 
         if self.path == "/api/account/sign-out":
             self._handle_sign_out()
+            return
+
+        if self.path == "/api/account/forget":
+            self._handle_forget()
             return
 
         if self.path == "/api/trends/refresh":
@@ -2126,6 +2190,47 @@ class CherryWebHandler(BaseHTTPRequestHandler):
         self._send_json(
             HTTPStatus.OK,
             {"user_id": session["user_id"], "anonymous": True},
+            set_cookie=_cookie(fresh),
+        )
+
+    def _handle_export(self) -> None:
+        """Everything held about this person, as a file they can keep."""
+        from fashion_agent.privacy import as_zip, collect
+
+        _session_id, session, _is_new = self._ensure_session()
+        export = collect(session["user_id"])
+        payload = as_zip(export)
+
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "application/zip")
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header(
+            "Content-Disposition",
+            'attachment; filename="cherry-data.zip"',
+        )
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def _handle_forget(self) -> None:
+        """A request to be forgotten, answered with what actually went.
+
+        The report is not flattened into "done": a client told it succeeded while
+        a store still held their photographs has been told a lie.
+        """
+        from fashion_agent.privacy import forget
+
+        session_id, session, _is_new = self._ensure_session()
+        report = forget(session["user_id"])
+        SESSIONS.pop(session_id, None)
+        accounts = get_accounts()
+        fresh = accounts.open_session(accounts.anonymous().user_id)
+        SESSIONS[fresh] = new_session_state(
+            user_id=accounts.user_for_token(fresh) or ""
+        )
+
+        self._send_json(
+            HTTPStatus.OK,
+            report.as_dict(),
             set_cookie=_cookie(fresh),
         )
 

@@ -327,6 +327,17 @@ class LookStore:
 
         return result.rowcount > 0
 
+    def delete_all(self, user_id: str) -> int:
+        """Every look session of one person, for a request to be forgotten."""
+        connection = self._connection()
+
+        with self._lock, connection:
+            result = connection.execute(
+                "DELETE FROM look_sessions WHERE user_id = ?", (user_id,)
+            )
+
+        return result.rowcount
+
     def _write(
         self,
         user_id: str,

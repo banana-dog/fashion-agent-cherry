@@ -278,7 +278,34 @@ class Wardrobe:
     def delete_user(self, user_id: str) -> None:
         self.delete_items(user_id)
         self.delete_references(user_id)
-        shutil.rmtree(self.root / _safe_segment(user_id), ignore_errors=True)
+        self.delete_user_images(user_id)
+
+    def count_user_images(self, user_id: str) -> int:
+        """How many photographs belong to one person on disk right now."""
+        directory = self.root / _safe_segment(user_id)
+
+        if not directory.is_dir():
+            return 0
+
+        return sum(1 for path in directory.rglob("*") if path.is_file())
+
+    def delete_user_images(self, user_id: str) -> int:
+        """The pictures on disk, without touching the rows that point at them.
+
+        Kept apart from `delete_user` because a request to be forgotten is
+        allowed to reach for the files on their own: a row that is gone while the
+        photograph sits in a folder is not a deletion.
+        """
+        directory = self.root / _safe_segment(user_id)
+        removed = 0
+
+        for path in sorted(directory.rglob("*"), reverse=True):
+            if path.is_file():
+                removed += 1
+
+        shutil.rmtree(directory, ignore_errors=True)
+
+        return removed
 
     # items
 
@@ -427,10 +454,17 @@ class Wardrobe:
         return True
 
     def delete_items(self, user_id: str) -> int:
-        for item in self.items(user_id):
+        """Remove every item and report how many went.
+
+        It used to return how many were left afterwards, which is zero on a
+        successful call and reads like nothing happened.
+        """
+        items = self.items(user_id)
+
+        for item in items:
             self.delete_item(user_id, item.id)
 
-        return len(self.items(user_id))
+        return len(items)
     # references
 
     def add_reference(
