@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pytest
 from langgraph.store.memory import InMemoryStore
 
-from fashion_agent.styleDNA import load_style_memory, product_hard_conflicts
+from fashion_agent.style_dna import load_style_memory, product_hard_conflicts
 from fashion_agent.taste_quiz import OutfitCard, TasteQuiz, inferred_preferences
 
 

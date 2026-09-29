@@ -4,7 +4,7 @@ from langchain.messages import HumanMessage, SystemMessage
 
 from fashion_agent.product_search.product_search import product_attribute_extractor
 from fashion_agent.states import FashionState
-from fashion_agent.styleDNA import (
+from fashion_agent.style_dna import (
     preference_score,
     product_hard_conflicts,
 )

@@ -2,7 +2,7 @@ from fashion_agent.outfit_builder import (
     build_outfits,
     present_outfits,
 )
-from fashion_agent.styleDNA import (
+from fashion_agent.style_dna import (
     product_hard_conflicts,
 )
 

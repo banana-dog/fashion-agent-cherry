@@ -31,7 +31,7 @@ from fashion_agent.product_search.products_processing import (
 )
 from fashion_agent.states import FashionState
 from fashion_agent.storage import build_checkpointer, build_store
-from fashion_agent.styleDNA import load_style_memory, update_style_memory
+from fashion_agent.style_dna import load_style_memory, update_style_memory
 from fashion_agent.tool_node import check_context
 
 load_dotenv()

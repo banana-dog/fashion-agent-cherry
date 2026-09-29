@@ -347,7 +347,7 @@ def test_answers_reach_the_profile_the_graph_reads(conversation, store, monkeypa
         conversation.answer("alice", "холодные, размер S")
 
     from fashion_agent.client_profile import load_client_profile
-    from fashion_agent.styleDNA import load_style_memory
+    from fashion_agent.style_dna import load_style_memory
 
     runtime = type(
         "Runtime",

@@ -1,5 +1,6 @@
 import json
 import sqlite3
+import time
 import uuid
 from datetime import datetime
 from http import HTTPStatus
@@ -14,7 +15,7 @@ from fashion_agent.accounts import get_accounts
 from fashion_agent.body_profile import BodyProfileConversation
 from fashion_agent.graph import graph
 from fashion_agent.storage import build_store
-from fashion_agent.styleDNA import Context
+from fashion_agent.style_dna import Context
 from fashion_agent.taste_catalog_web import render_catalog
 from fashion_agent.taste_conversation import TasteConversation
 from fashion_agent.taste_quiz import load_cards, resolve_card_image
@@ -1729,6 +1730,16 @@ def run_agent_turn(
         now=_client_clock(session.get("client_now")),
     )
 
+    from fashion_agent.metrics import get_registry
+
+    registry = get_registry()
+    trace = registry.start_trace(
+        user_id=session["user_id"],
+        thread_id=session["thread_id"],
+        question=user_input,
+    )
+    started = time.monotonic()
+
     pending = list(session.get("taste_context", []))
     result = graph.invoke(
         {
@@ -1742,14 +1753,40 @@ def run_agent_turn(
     )
     session["taste_context"] = session.get("taste_context", [])[len(pending) :]
 
+    outfits = serialize_outfits(result.get("outfits", []))
+
+    # What was given up is written into the trace and nowhere else: the client
+    # gets a note about a relaxed constraint, the operator gets the reason.
+    for report in result.get("search_reports", []) or []:
+        if isinstance(report, dict):
+            trace.gave_up(list(report.get("relaxed") or []))
+            trace.step(
+                "search",
+                source=report.get("source"),
+                kept=report.get("kept_count"),
+                raw=report.get("raw_count"),
+            )
+
+    for item in result.get("tool_results", []) or []:
+        if isinstance(item, dict):
+            trace.tool(str(item.get("tool")), bool(item.get("ok")))
+
+    for report in result.get("search_reports", []) or []:
+        if isinstance(report, dict) and report.get("source") == "link_check":
+            trace.step("links", kept=report.get("kept_count"))
+
+    trace.outfits = len(outfits)
+    registry.turn(
+        threads=1,
+        duration_ms=int((time.monotonic() - started) * 1000),
+        outfits=len(outfits),
+        had_error=False,
+    )
+    registry.update_trace(trace)
+
     return {
         "reply": web_reply_text(result),
-        "outfits": serialize_outfits(
-            result.get(
-                "outfits",
-                [],
-            )
-        ),
+        "outfits": outfits,
     }
 
 
@@ -1943,6 +1980,22 @@ class CherryWebHandler(BaseHTTPRequestHandler):
         if path.startswith("/api/collage/"):
             self._ensure_session()
             self._handle_collage(path.rsplit("/", 1)[-1])
+            return
+
+        if path == "/api/metrics":
+            self._handle_metrics()
+            return
+
+        if path == "/api/trace":
+            _session_id, session, _is_new = self._ensure_session()
+
+            from fashion_agent.metrics import get_registry
+
+            traces = get_registry().traces(session["user_id"])
+            self._send_json(
+                HTTPStatus.OK,
+                {"traces": traces, "count": len(traces)},
+            )
             return
 
         if self.path == "/api/cabinet":
@@ -2498,6 +2551,25 @@ class CherryWebHandler(BaseHTTPRequestHandler):
             return
 
         self._send_json(HTTPStatus.OK, {"ok": True})
+
+    def _handle_metrics(self) -> None:
+        """Counters and the questions they answer, in one place.
+
+        Open to whoever is running the server. It counts searches and failures,
+        not people: no message from a client ends up in here.
+        """
+        from fashion_agent.metrics import get_registry, report, report_ru
+
+        registry = get_registry()
+        self._send_json(
+            HTTPStatus.OK,
+            {
+                "report": report(),
+                "lines": report_ru(report()),
+                "failures": recent_failures(20),
+                "traces": len(registry.traces()),
+            },
+        )
 
     def _handle_cabinet_page(self) -> None:
         """One page with everything known about this person, gaps included."""

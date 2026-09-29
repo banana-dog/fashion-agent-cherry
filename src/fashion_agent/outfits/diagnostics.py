@@ -6,7 +6,7 @@ from fashion_agent.outfits.labels import (
     format_money,
 )
 from fashion_agent.states import AssemblyDiagnostics, FashionState
-from fashion_agent.styleDNA import product_hard_conflicts
+from fashion_agent.style_dna import product_hard_conflicts
 
 
 def collect_desired_attributes(

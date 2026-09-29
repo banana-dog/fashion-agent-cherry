@@ -493,6 +493,29 @@ def _is_dead(verdict: str | None) -> int:
     return 1 if verdict in {Verdict.GONE.value, Verdict.LISTING.value} else 0
 
 
+def _record_search(result: SourceResult, category: str) -> None:
+    """Count what a source gave and what survived it.
+
+    Recorded here rather than inside the source so that the numbers describe what
+    the agent got, not what one adapter happened to parse.
+    """
+    from fashion_agent.metrics import get_registry
+
+    registry = get_registry()
+
+    for report in result.reports:
+        registry.search_run(
+            source=report.source,
+            ok=report.ok,
+            raw=report.raw_count,
+            kept=report.kept_count,
+            latency_ms=report.latency_ms,
+            relaxed=report.relaxed,
+            filtered_out=report.filtered_out,
+            category=category,
+        )
+
+
 def search_one_category(
     state: ProductSearchTask,
     runtime: Runtime[Context],
@@ -526,6 +549,7 @@ def search_one_category(
     )
 
     result = run_product_search(query=query, sources=sources)
+    _record_search(result, search["category"])
     used_query = query.text
     relaxed: tuple[str, ...] = ()
 
@@ -552,6 +576,7 @@ def search_one_category(
                 relaxed=relaxed,
             )
 
+            _record_search(fallback, search["category"])
             result = fallback
             used_query = fallback_query
 

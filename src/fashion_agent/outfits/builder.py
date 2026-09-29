@@ -33,6 +33,30 @@ TREND_SCORE_WEIGHT = 0.15
 MAX_OWNED_PER_CATEGORY = 4
 
 
+def _record_coverage(outfits: list[dict]) -> None:
+    """Whether the knowledge collection is being drawn from at all.
+
+    A card nobody uses is a card nobody is paying for, and nothing else in the
+    system makes that visible.
+    """
+    from fashion_agent.metrics import get_registry
+
+    if not outfits:
+        return
+
+    formulas = {value for outfit in outfits for value in outfit.get("matched_formula_ids", [])}
+    trends = {value for outfit in outfits for value in outfit.get("matched_trend_ids", [])}
+    owned = sum(int(outfit.get("owned_count") or 0) for outfit in outfits)
+    bought = sum(int(outfit.get("to_buy_count") or 0) for outfit in outfits)
+
+    get_registry().knowledge_use(
+        formulas=sorted(formulas),
+        trends=sorted(trends),
+        used_items=owned,
+        bought_items=bought,
+    )
+
+
 def build_outfits(
     state: FashionState,
 ):
@@ -314,6 +338,8 @@ def build_outfits(
         key=lambda outfit: outfit["base_score"],
         reverse=True,
     )
+
+    _record_coverage(outfits[:8])
 
     return {
         "outfits": outfits[:8],

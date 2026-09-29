@@ -4,7 +4,7 @@ import pytest
 
 from fashion_agent.product_search.products_processing import score_candidate
 from fashion_agent.reference_taste import profile_lines, reference_preferences
-from fashion_agent.styleDNA import (
+from fashion_agent.style_dna import (
     IMPLICIT_SOURCES,
     product_hard_conflicts,
 )

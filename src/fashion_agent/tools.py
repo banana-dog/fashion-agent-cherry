@@ -9,6 +9,7 @@ Tool runs are bounded per turn. A request for an outfit is not a licence to
 crawl, and a plan that keeps asking for more is a bug, not persistence.
 """
 
+import time
 from datetime import UTC, datetime
 from typing import Any, Protocol
 
@@ -160,9 +161,12 @@ def run_tools(
             if key != "tool" and value not in (None, "")
         }
 
+        began = time.time()
+
         try:
             result = tool.run(**params)
         except ToolUnavailable as error:
+            _count_tool(name, False, began)
             results.append(
                 ToolResult(
                     tool=name,
@@ -173,6 +177,7 @@ def run_tools(
             )
             continue
         except Exception as error:  # noqa: BLE001 - a tool must not kill a turn
+            _count_tool(name, False, began)
             # The class name is kept because it is useful to whoever reads the
             # log, and the message is not, because it can carry the provider's
             # own words into a chat window.
@@ -189,9 +194,20 @@ def run_tools(
         if not result.fetched_at:
             result.fetched_at = now()
 
+        _count_tool(name, result.ok, began)
         results.append(result)
 
     return results
+
+
+def _count_tool(name: str, ok: bool, began: float) -> None:
+    from fashion_agent.metrics import get_registry
+
+    get_registry().tool_run(
+        tool=name,
+        ok=ok,
+        latency_ms=int((time.time() - began) * 1000),
+    )
 
 
 def context_lines(results: list[ToolResult]) -> list[str]:
