@@ -1,4 +1,5 @@
 import json
+import os
 
 from langchain_core.messages import SystemMessage
 from langgraph.runtime import Runtime
@@ -6,6 +7,7 @@ from langgraph.types import (
     Overwrite,
     Send,
 )
+from pydantic import BaseModel, Field
 
 from fashion_agent.client_profile import (
     ClientProfile,
@@ -13,6 +15,12 @@ from fashion_agent.client_profile import (
     profile_ru_lines,
 )
 from fashion_agent.llm import Context, llm
+from fashion_agent.product_search.liveness import (
+    Verdict,
+    check_products,
+    compare_price,
+    summary_ru,
+)
 from fashion_agent.product_search.models import (
     ProductAttributeBatch,
     ProductSearchTask,
@@ -365,6 +373,126 @@ def dispatch_product_searches(
     ]
 
 
+class Verification(BaseModel):
+    """What looking at the links actually found."""
+
+    products: list[dict] = Field(default_factory=list)
+    checks: list = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+    summary: str = ""
+    kept: int = 0
+
+
+def verify_links(products: list[dict]) -> Verification:
+    """Look at the links before the client is sent to them.
+
+    A search result is a snapshot, and a snapshot lies in three ways: the page
+    is gone, the page turned into a category listing, or the page says the item
+    is sold out while the index still quotes a price. None of that is visible
+    without going to the page.
+
+    The check is best effort. With no network every link comes back unreachable,
+    which is reported and otherwise left alone, because a search that is thrown
+    away because a shop could not be reached helps nobody.
+    """
+    if os.getenv("CHERRY_VERIFY_LINKS", "1") == "0":
+        return Verification(products=products, kept=len(products))
+
+    checks = check_products(
+        products,
+        limit=int(os.getenv("CHERRY_VERIFY_LIMIT", "3")),
+        timeout=float(os.getenv("CHERRY_VERIFY_TIMEOUT", "10")),
+    )
+
+    if not checks:
+        return Verification(products=products, kept=len(products))
+
+    by_url = {check.url: check for check in checks}
+    prepared: list[dict] = []
+
+    for product in products:
+        check = by_url.get(product.get("url") or "")
+
+        if check is None:
+            prepared.append(product)
+            continue
+
+        # Nothing was learned: say so and keep the search result as it was.
+        if check.verdict is Verdict.UNREACHABLE:
+            prepared.append(product)
+            continue
+
+        note = compare_price(check, product.get("price"))
+
+        prepared.append(
+            {
+                **product,
+                "link_verdict": check.verdict.value,
+                "page_price": check.price,
+                "page_currency": check.currency,
+                "page_availability": check.availability,
+                "link_note": note,
+            }
+        )
+
+    # A dead link goes to the back of the line rather than being thrown away: the
+    # check can be wrong, and a missing coat is worse than a link that needs a
+    # second try.
+    prepared.sort(key=lambda product: _is_dead(product.get("link_verdict")))
+
+    unreachable = sum(
+        1 for check in checks if check.verdict is Verdict.UNREACHABLE
+    )
+
+    if unreachable == len(checks):
+        return Verification(
+            products=prepared,
+            checks=checks,
+            notes=["link_check_unreachable"],
+            summary="проверить ссылки не удалось: нет связи с магазинами",
+            kept=len(prepared),
+        )
+
+    notes: list[str] = []
+    kept = len(
+        [
+            product
+            for product in prepared
+            if not _is_dead(product.get("link_verdict"))
+        ]
+    )
+
+    if any(
+        product.get("page_availability") is not None
+        and not product.get("page_availability", "").startswith("InStock")
+        for product in prepared
+    ):
+        notes.append("out_of_stock")
+
+    if any(product.get("link_note") for product in prepared):
+        notes.append("price_moved")
+
+    if kept < len(prepared):
+        notes.append("dead_links")
+
+    summary = summary_ru(prepared, checks)
+
+    if summary:
+        notes.append("link_checked")
+
+    return Verification(
+        products=prepared,
+        checks=checks,
+        notes=notes,
+        summary=summary,
+        kept=kept,
+    )
+
+
+def _is_dead(verdict: str | None) -> int:
+    return 1 if verdict in {Verdict.GONE.value, Verdict.LISTING.value} else 0
+
+
 def search_one_category(
     state: ProductSearchTask,
     runtime: Runtime[Context],
@@ -443,12 +571,23 @@ def search_one_category(
         for product in result.products
     ]
 
-    print(
-        f"[{search['category']}] Found {len(prepared_products)} "
-        f"from {', '.join(sorted(result.by_source()))}"
-    )
+    verification = verify_links(prepared_products)
+
+    if verification.notes:
+        reports.append(
+            {
+                "source": "link_check",
+                "ok": verification.kept > 0 or not verification.checks,
+                "kept_count": verification.kept,
+                "raw_count": len(verification.checks),
+                "search_text": verification.summary,
+            }
+        )
+
+    if verification.notes:
+        print(f"[{search['category']}] {verification.summary}")
 
     return {
-        "products": prepared_products,
+        "products": verification.products,
         "search_reports": reports,
     }

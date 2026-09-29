@@ -9,6 +9,7 @@ from fashion_agent.outfits.diagnostics import (
     format_constraints_block,
 )
 from fashion_agent.outfits.labels import attribute_label
+from fashion_agent.product_search.liveness import STOCK_RU, Verdict
 from fashion_agent.states import FashionState
 from fashion_agent.tool_node import (
     context_lines_from_state,
@@ -227,6 +228,8 @@ def present_outfits(
             if item.get("image_url"):
                 lines.append(f"  Фото: {item['image_url']}")
 
+            lines.extend(link_check_lines(item))
+
         lines.append("Почему работает:")
         lines.extend(
             explanation_lines(
@@ -241,6 +244,46 @@ def present_outfits(
             lines.append("Нюансы: " + "; ".join(issues))
 
     return {"messages": [AIMessage(content="\n".join(lines))]}
+
+
+def link_check_lines(item: dict) -> list[str]:
+    """What looking at the page behind a link found, said plainly.
+
+    A shop that turns a bot away is not evidence that the item is gone, so that
+    case is reported as an unchecked link and nothing else.
+    """
+    verdict = item.get("link_verdict")
+
+    if not verdict:
+        return []
+
+    if verdict == Verdict.UNREACHABLE.value:
+        return ["  Ссылку проверить не удалось"]
+
+    if verdict == Verdict.GONE.value:
+        return ["  ⚠️ Ссылка не открывается — вещь сняли"]
+
+    if verdict == Verdict.LISTING.value:
+        return ["  ⚠️ Ссылка ведёт на витрину, а не на конкретную вещь"]
+
+    if verdict == Verdict.BLOCKED.value:
+        return ["  Магазин не дал проверить наличие"]
+
+    if verdict == Verdict.NO_DETAILS.value:
+        return ["  Наличие на странице не указано"]
+
+    availability = item.get("page_availability")
+
+    if availability and availability not in {"InStock", "LimitedAvailability"}:
+        return [f"  ⚠️ На странице: {STOCK_RU.get(availability, availability)}"]
+
+    if item.get("link_note"):
+        return [f"  {item['link_note']}"]
+
+    if item.get("page_price") is not None:
+        return [f"  Проверено на странице: {item['page_price']:g} — есть в наличии"]
+
+    return []
 
 
 def search_relaxation_notes(state: FashionState) -> list[str]:
