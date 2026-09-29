@@ -18,6 +18,8 @@ import re
 import time
 from typing import ClassVar
 
+from pydantic import BaseModel, Field
+
 from fashion_agent.product_search.serpapi_client import SerpApiClient
 from fashion_agent.tools import (
     CACHE_TTL_SECONDS,
@@ -288,6 +290,10 @@ def findings_ru(
     return lines, [finding.url for finding in findings]
 
 
+class BrandArgs(BaseModel):
+    brand: str = Field(description="Название бренда, как его назвал клиент")
+
+
 class BrandReviewsTool:
     """Buyer reviews for a label, each attached to the page it came from."""
 
@@ -298,6 +304,9 @@ class BrandReviewsTool:
         "в нём или это дорогая покупка. Каждый факт — со ссылкой."
     )
     parameters: ClassVar[list[str]] = ["brand"]
+
+    def args_model(self) -> type[BaseModel]:
+        return BrandArgs
 
     def __init__(
         self,

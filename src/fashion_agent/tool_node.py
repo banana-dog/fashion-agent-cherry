@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from fashion_agent.llm import Context, llm
 from fashion_agent.states import FashionState
 from fashion_agent.tools import (
+    MAX_TOOLS_PER_TURN,
     ToolResult,
     catalogue,
     context_lines,
@@ -20,6 +21,24 @@ from fashion_agent.tools import (
     run_tools,
     sources_ru,
 )
+
+
+def _asking_messages(state: FashionState) -> list:
+    """What the model is answering, as a short conversation.
+
+    The request fields go in as the client's own words rather than as a filled-in
+    form, so "Москва, до 20000" reads the same here as it does to a person.
+    """
+    messages = list(state.get("messages") or [])
+    hint = _context_hint(state.get("request"))
+
+    if hint:
+        return [
+            *messages,
+            SystemMessage(content=f"Known so far: {hint}"),
+        ]
+
+    return messages
 
 
 class ToolCall(BaseModel):
@@ -100,24 +119,49 @@ def check_context(
     runtime: Runtime[Context],
     *,
     tools: list | None = None,
+    model=None,
 ) -> dict:
-    """Plan and run tools, then leave the findings in the state."""
+    """Let the agent reach for what it needs, then leave the findings in state.
+
+    The tools are called natively, so their arguments come from the tools and a
+    function with a new parameter needs no change here. The old form-based
+    planner stays as a fallback for a model that will not call tools at all.
+    """
     available = tools if tools is not None else default_tools()
 
     if not available:
         return {"tool_results": []}
 
-    calls = plan_tools(state.get("request"), available)
+    try:
+        results = _call_tools(available, state, model=model)
+    except Exception:  # noqa: BLE001 - a turn must survive a tool-calling failure
+        calls = plan_tools(state.get("request"), available)
 
-    if not calls:
+        if not calls:
+            return {"tool_results": []}
+
+        results = run_tools(available, calls)
+
+    if not results:
         return {"tool_results": []}
-
-    results = run_tools(available, calls)
 
     return {
         "tool_results": [result.model_dump(mode="json") for result in results],
         "context_lines": context_lines(results),
     }
+
+
+def _call_tools(
+    tools: list,
+    state: FashionState,
+    *,
+    model=None,
+) -> list:
+    from fashion_agent.tool_calling import ToolCallRunner
+
+    runner = ToolCallRunner(tools, max_calls=MAX_TOOLS_PER_TURN, model=model)
+
+    return runner.run_turn(_asking_messages(state))
 
 
 def context_lines_from_state(state: FashionState) -> list[str]:

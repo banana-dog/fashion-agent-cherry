@@ -16,6 +16,7 @@ import time
 from typing import ClassVar
 
 import httpx
+from pydantic import BaseModel, Field
 
 from fashion_agent.tools import (
     CACHE_TTL_SECONDS,
@@ -477,6 +478,13 @@ class WttrProvider:
 PROVIDERS = (OpenMeteoProvider(), MetNoProvider(), WttrProvider())
 
 
+class WeatherArgs(BaseModel):
+    place: str | None = Field(
+        default=None,
+        description="Город или место, которое назвал клиент. Не выдумывай",
+    )
+
+
 class WeatherTool:
     """A forecast for a named place, from whichever provider answers first."""
 
@@ -487,6 +495,9 @@ class WeatherTool:
         "Бери только когда в запросе есть или город, или явная погода."
     )
     parameters: ClassVar[list[str]] = ["place"]
+
+    def args_model(self) -> type[BaseModel]:
+        return WeatherArgs
 
     def __init__(
         self,

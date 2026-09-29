@@ -12,6 +12,7 @@ crawl, and a plan that keeps asking for more is a bug, not persistence.
 from datetime import UTC, datetime
 from typing import Any, Protocol
 
+from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
 # A turn should not turn into a crawl.
@@ -61,9 +62,41 @@ class Tool(Protocol):
     description: str
     parameters: list[str]
 
+    def args_model(self) -> type[BaseModel]:
+        """The parameters, typed.
+
+        The agent is handed this rather than a hand-written list, so a tool with
+        a new argument needs no change anywhere else: adding a field here is the
+        only edit a new function requires.
+        """
+        ...
+
     def available(self) -> bool: ...
 
     def run(self, **params: Any) -> ToolResult: ...
+
+
+class NoArguments(BaseModel):
+    """A tool that takes nothing."""
+
+
+def as_structured_tool(tool: Tool):
+    """A tool the model can call natively, schema and all."""
+    return StructuredTool(
+        name=tool.name,
+        description=tool.description,
+        args_schema=tool.args_model(),
+        func=lambda **params: tool.run(**params).model_dump(mode="json"),
+    )
+
+
+def structured_tools(tools: list[Tool]) -> list:
+    """The tools the model may call, skipping the ones that cannot answer.
+
+    Offering a tool that is known to be unconfigured wastes a turn on a refusal
+    the model could have predicted.
+    """
+    return [as_structured_tool(tool) for tool in tools if tool.available()]
 
 
 def catalogue(tools: list[Tool]) -> str:
