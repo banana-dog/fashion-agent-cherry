@@ -146,9 +146,10 @@ def default_tools() -> list:
     global _tools
 
     if _tools is None:
+        from fashion_agent.product_search.brand_reviews import BrandReviewsTool
         from fashion_agent.tools_weather import WeatherTool
 
-        _tools = [WeatherTool()]
+        _tools = [WeatherTool(), BrandReviewsTool()]
 
     return _tools
 

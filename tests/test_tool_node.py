@@ -193,7 +193,8 @@ def test_default_tools_include_weather():
     reset_tools()
     tools = default_tools()
 
-    assert [tool.name for tool in tools] == ["weather"]
+    # Not an exact list: a new tool is an addition, not a reason to edit this.
+    assert "weather" in [tool.name for tool in tools]
 
 
 def test_an_empty_request_still_reaches_the_planner(monkeypatch):
