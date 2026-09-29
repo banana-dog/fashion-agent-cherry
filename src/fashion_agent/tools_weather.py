@@ -122,6 +122,26 @@ def describe_symbol(symbol: str | None) -> tuple[str, str | None]:
     return SYMBOL_CODES.get(name, ("погода неизвестна", None))
 
 
+def read_json(response, source: str) -> dict:
+    """A provider's answer as a dictionary, or a refusal.
+
+    A weather service that is unwell answers with an HTML error page and a 200,
+    and the failure that produces is a JSON parse error a long way from here.
+    Refusing at the point of parsing keeps the reason where it belongs.
+    """
+    try:
+        payload = response.json()
+    except ValueError as error:
+        raise ToolUnavailable(
+            f"{source} answered with something that is not JSON"
+        ) from error
+
+    if not isinstance(payload, dict):
+        raise ToolUnavailable(f"{source} answered with an unexpected shape")
+
+    return payload
+
+
 def geocode(place: str, *, client: httpx.Client | None = None) -> dict:
     """Find a place by name, so a forecast needs no coordinates from the user."""
     text = place.strip()
@@ -148,7 +168,7 @@ def geocode(place: str, *, client: httpx.Client | None = None) -> dict:
         if own:
             session.close()
 
-    results = response.json().get("results") or []
+    results = read_json(response, "geocoding").get("results") or []
 
     if not results:
         raise ToolUnavailable(f"could not find a place called {text!r}")
@@ -318,7 +338,7 @@ class OpenMeteoProvider:
             if own:
                 session.close()
 
-        data = response.json()
+        data = read_json(response, self.name)
         current = data.get("current") or {}
 
         if "temperature_2m" not in current:
@@ -383,7 +403,10 @@ class MetNoProvider:
         if response.status_code != 200:
             raise ToolUnavailable(f"{self.name} replied {response.status_code}")
 
-        timeseries = (response.json().get("properties") or {}).get("timeseries") or []
+        timeseries = (
+            (read_json(response, self.name).get("properties") or {}).get("timeseries")
+            or []
+        )
 
         if not timeseries:
             raise ToolUnavailable(f"{self.name} returned no reading")
@@ -442,7 +465,7 @@ class WttrProvider:
             if own:
                 session.close()
 
-        conditions = response.json().get("current_condition") or []
+        conditions = read_json(response, self.name).get("current_condition") or []
 
         if not conditions:
             raise ToolUnavailable(f"{self.name} returned no reading")

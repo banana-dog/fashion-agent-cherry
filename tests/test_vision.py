@@ -262,7 +262,18 @@ def test_provider_errors_become_vision_call_failed():
     with pytest.raises(VisionCallFailed) as error:
         vision.recognise_item(jpeg_of((100, 100)))
 
-    assert "429" in str(error.value)
+    # The kind is kept, the provider's own words are not: this string reaches a
+    # client through a message, and a provider payload has no place in a chat.
+    assert "RuntimeError" in str(error.value)
+    assert "429" not in str(error.value)
+
+
+def test_a_client_that_cannot_be_built_is_a_failed_call_not_a_crash(monkeypatch):
+    """A wrong model name fails while the client is constructed, not in flight."""
+    vision = VisionClient(api_key="k", model="")
+
+    with pytest.raises((VisionCallFailed, VisionUnavailable)):
+        vision.recognise_item(jpeg_of((100, 100)))
 
 
 def test_image_is_downscaled_to_a_sane_size():

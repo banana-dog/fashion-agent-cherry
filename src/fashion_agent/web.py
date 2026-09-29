@@ -1537,6 +1537,52 @@ HTML_PAGE = """<!doctype html>
 HTML_PAGE = HTML_PAGE.replace("</body>", TASTE_QUIZ_HTML + "</body>")
 
 
+_FAILURES: list[dict] = []
+_MAX_FAILURES = 200
+
+
+def _log_failure(method: str, detail: str) -> None:
+    """Keep the last few failures where the operator can read them.
+
+    A bounded list rather than a log file: the server is a single script on a
+    laptop far more often than it is a service, and an unbounded log in memory is
+    its own kind of leak.
+    """
+    from datetime import UTC, datetime
+
+    _FAILURES.append(
+        {
+            "at": datetime.now(UTC).isoformat(),
+            "method": method,
+            "detail": detail,
+        }
+    )
+
+    if len(_FAILURES) > _MAX_FAILURES:
+        del _FAILURES[: len(_FAILURES) - _MAX_FAILURES]
+
+
+def recent_failures(limit: int = 50) -> list[dict]:
+    """What went wrong lately, newest first, without any client text in it."""
+    return list(reversed(_FAILURES[-limit:]))
+
+
+CARDS_UNAVAILABLE_PAGE = """<!doctype html>
+<html lang="ru"><head><meta charset="utf-8">
+<title>Коллекция недоступна</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; padding: 32px;
+    background: #fbf7f5; color: #2b2220; }
+  a { color: #b8446a; }
+</style></head>
+<body>
+<h1>Коллекция образов</h1>
+<p>Не удалось показать коллекцию: карточки на диске читаются с ошибкой.
+Попробуйте обновить коллекцию — чат и кабинет от неё не зависят.</p>
+<p><a href="/">Вернуться в чат</a></p>
+</body></html>"""
+
+
 def _cookie(token: str) -> str:
     return f"{SESSION_COOKIE}={token}; Path=/; HttpOnly; SameSite=Lax"
 
@@ -1802,6 +1848,11 @@ class CherryWebHandler(BaseHTTPRequestHandler):
     def do_GET(
         self,
     ):
+        self._guard("do_GET")
+
+    def _do_GET(
+        self,
+    ):
         path = urlsplit(self.path).path
 
         if path.startswith("/api/taste/images/"):
@@ -1905,10 +1956,13 @@ class CherryWebHandler(BaseHTTPRequestHandler):
         if urlsplit(self.path).path in {"/cards", "/cards/"}:
             try:
                 self._send_html(render_catalog(load_cards()))
-            except (OSError, ValueError):
-                self.send_error(
-                    HTTPStatus.INTERNAL_SERVER_ERROR, "Could not load outfit cards"
-                )
+            except Exception as error:  # noqa: BLE001 - the page still opens
+                # A malformed card must not turn the whole collection into a
+                # dead page; the chat and the cabinet do not depend on it.
+                from fashion_agent.web_errors import safe_detail
+
+                _log_failure("cards", safe_detail(error))
+                self._send_html(CARDS_UNAVAILABLE_PAGE)
             return
 
         if urlsplit(self.path).path in {"/", "/index.html"}:
@@ -1929,6 +1983,11 @@ class CherryWebHandler(BaseHTTPRequestHandler):
         )
 
     def do_POST(
+        self,
+    ):
+        self._guard("do_POST")
+
+    def _do_POST(
         self,
     ):
         if self.path in {"/api/taste/session", "/api/taste/next", "/api/taste/answer"}:
@@ -1996,6 +2055,11 @@ class CherryWebHandler(BaseHTTPRequestHandler):
     def do_PATCH(
         self,
     ):
+        self._guard("do_PATCH")
+
+    def _do_PATCH(
+        self,
+    ):
         path = urlsplit(self.path).path
 
         if path.startswith("/api/wardrobe/items/"):
@@ -2013,6 +2077,11 @@ class CherryWebHandler(BaseHTTPRequestHandler):
         )
 
     def do_DELETE(
+        self,
+    ):
+        self._guard("do_DELETE")
+
+    def _do_DELETE(
         self,
     ):
         path = urlsplit(self.path).path
@@ -2110,6 +2179,48 @@ class CherryWebHandler(BaseHTTPRequestHandler):
         session = new_session_state(user_id=accounts.user_for_token(session_id) or "")
         SESSIONS[session_id] = session
         return session_id, session, True
+
+    def _guard(self, method: str) -> None:
+        """Make sure a request always gets an answer.
+
+        Anything that escapes the route below reaches the client as a sentence in
+        its own language instead of an empty response and a traceback in the
+        server log. Losing a turn because a shop was down would be the worst
+        possible failure of a stylist: the client is left thinking Cherry is
+        broken rather than that the weather is.
+        """
+        from fashion_agent.web_errors import detail, safe_detail
+
+        try:
+            getattr(self, f"_{method}")()
+        except (BrokenPipeError, ConnectionResetError):
+            # The client left before the answer was ready. Nothing to say to
+            # nobody, and the connection is already gone.
+            _log_failure(method, "клиент ушёл до ответа")
+        except Exception as error:  # noqa: BLE001 - this is the point
+            _log_failure(method, safe_detail(error))
+            self._fail(detail(error))
+
+    def _fail(self, detail: dict) -> None:
+        """A last-resort reply, written directly because the usual one failed."""
+        body = json.dumps(
+            {
+                "error": detail["message"],
+                "retryable": detail["retryable"],
+            },
+            ensure_ascii=False,
+        ).encode("utf-8")
+
+        try:
+            self.send_response(HTTPStatus.SERVICE_UNAVAILABLE)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError, AttributeError):
+            # Headers were already sent, or the socket is gone. Either way there
+            # is nothing further a handler can honestly do.
+            return
 
     def _reference_id_from_path(self) -> str:
         # /api/wardrobe/references/<id>/image
@@ -2516,17 +2627,21 @@ class CherryWebHandler(BaseHTTPRequestHandler):
         """Collect trend cards from public feeds on demand."""
         from fashion_agent.knowledge.repository import reload_knowledge
         from fashion_agent.trends.refresh import refresh
+        from fashion_agent.web_errors import describe, safe_detail
 
         try:
             report = refresh()
+            # Kept inside the guard on purpose: reloading reads every card from
+            # disk and can fail on one malformed file, and a client who asked
+            # for a refresh should be told, not left with a dropped connection.
+            repository = reload_knowledge()
         except Exception as error:  # noqa: BLE001 - report, never crash the server
+            _log_failure("trends/refresh", safe_detail(error))
             self._send_json(
                 HTTPStatus.BAD_GATEWAY,
-                {"error": f"{type(error).__name__}: {error}"},
+                {"error": describe(error), "retryable": True},
             )
             return
-
-        repository = reload_knowledge()
 
         self._send_json(
             HTTPStatus.OK,
@@ -2587,16 +2702,19 @@ class CherryWebHandler(BaseHTTPRequestHandler):
                 },
                 set_cookie=set_cookie,
             )
-        except (
-            json.JSONDecodeError,
-            KeyError,
-            RuntimeError,
-            TypeError,
-            ValueError,
-        ) as error:
+        except Exception as error:  # noqa: BLE001 - a turn must survive anything
+            # Caught broadly on purpose. A model rate limit, a dead socket, a
+            # locked database: none of them are a reason to lose the client's
+            # turn, and none of their messages are things a client needs to read.
+            from fashion_agent.web_errors import detail, safe_detail
+
+            _log_failure("chat", safe_detail(error))
             self._send_json(
-                HTTPStatus.INTERNAL_SERVER_ERROR,
-                {"error": str(error)},
+                HTTPStatus.SERVICE_UNAVAILABLE,
+                {
+                    "error": detail(error)["message"],
+                    "retryable": detail(error)["retryable"],
+                },
             )
 
     def _handle_reset(
@@ -2636,16 +2754,19 @@ class CherryWebHandler(BaseHTTPRequestHandler):
                 },
                 set_cookie=set_cookie,
             )
-        except (
-            json.JSONDecodeError,
-            KeyError,
-            RuntimeError,
-            TypeError,
-            ValueError,
-        ) as error:
+        except Exception as error:  # noqa: BLE001 - a turn must survive anything
+            # Caught broadly on purpose. A model rate limit, a dead socket, a
+            # locked database: none of them are a reason to lose the client's
+            # turn, and none of their messages are things a client needs to read.
+            from fashion_agent.web_errors import detail, safe_detail
+
+            _log_failure("chat", safe_detail(error))
             self._send_json(
-                HTTPStatus.INTERNAL_SERVER_ERROR,
-                {"error": str(error)},
+                HTTPStatus.SERVICE_UNAVAILABLE,
+                {
+                    "error": detail(error)["message"],
+                    "retryable": detail(error)["retryable"],
+                },
             )
 
 

@@ -270,7 +270,9 @@ def inspect(
             verdict=Verdict.UNREACHABLE,
             note="страница не отвечает вовсе",
         )
-    except (httpx.TransportError, httpx.InvalidURL) as error:
+    except httpx.HTTPError as error:
+        # A shop that redirects in a circle is a RequestError but not a
+        # TransportError, and it must not take a whole outfit down with it.
         return ProductCheck(
             url=url,
             verdict=Verdict.UNREACHABLE,

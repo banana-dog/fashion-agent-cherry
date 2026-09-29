@@ -380,9 +380,13 @@ class VisionClient:
                 "optionally VISION_BASE_URL and VISION_MODEL"
             )
 
-        llm = self._llm or self._build()
-
         try:
+            # Building the client is inside the guard on purpose: a missing key
+            # or a wrong model name fails while the client is being constructed,
+            # and a validation error from there would otherwise escape a
+            # handler that only knows how to catch a failed call.
+            llm = self._llm or self._build()
+
             return llm.with_structured_output(schema).invoke(
                 [
                     SystemMessage(content=SYSTEM_PROMPTS[kind]),
@@ -394,9 +398,13 @@ class VisionClient:
                     ),
                 ]
             )
+        except VisionUnavailable:
+            raise
         except Exception as error:
+            # Class only: the text can carry a provider's payload, and it reaches
+            # a client through a message.
             raise VisionCallFailed(
-                f"vision request failed: {type(error).__name__}: {error}"
+                f"vision request failed: {type(error).__name__}"
             ) from error
 
 

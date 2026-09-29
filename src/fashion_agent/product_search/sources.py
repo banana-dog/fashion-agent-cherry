@@ -209,8 +209,9 @@ class ResponseCache:
             return None
 
         try:
-            record = json.loads(self.path.read_text(encoding="utf-8"))[key]
-        except (ValueError, KeyError, OSError):
+            records = json.loads(self.path.read_text(encoding="utf-8"))
+            record = records[key]
+        except (ValueError, KeyError, OSError, TypeError):
             return None
 
         if time.time() - record["saved_at"] > self.ttl:

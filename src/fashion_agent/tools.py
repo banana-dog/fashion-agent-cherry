@@ -173,11 +173,14 @@ def run_tools(
             )
             continue
         except Exception as error:  # noqa: BLE001 - a tool must not kill a turn
+            # The class name is kept because it is useful to whoever reads the
+            # log, and the message is not, because it can carry the provider's
+            # own words into a chat window.
             results.append(
                 ToolResult(
                     tool=name,
                     ok=False,
-                    error=f"{type(error).__name__}: {error}",
+                    error=f"{type(error).__name__}",
                     fetched_at=now(),
                 )
             )
@@ -207,6 +210,26 @@ def context_lines(results: list[ToolResult]) -> list[str]:
     return lines
 
 
+def error_kind(error: str | None) -> str | None:
+    """The class name out of a stored error, and nothing else.
+
+    Errors are built from a class name and a message. Only the name is safe to
+    show: a message can carry an account, a request body or an internal host,
+    and this line is rendered as ordinary chat prose. Splitting on the first
+    space means anything with prose in it is dropped rather than trusted.
+    """
+    if not error:
+        return None
+
+    first = str(error).split(":", 1)[0].strip()
+    kind = first.split(" ", 1)[0].strip()
+
+    if not kind or not kind.replace(".", "").replace("_", "").isalnum():
+        return None
+
+    return kind if kind[0].isupper() else None
+
+
 def sources_ru(results: list[ToolResult]) -> list[str]:
     """What to show the client, including the tools that failed."""
     lines: list[str] = []
@@ -214,11 +237,16 @@ def sources_ru(results: list[ToolResult]) -> list[str]:
     for result in results:
         if result.ok:
             lines.append(f"{result.tool}: {result.source_line}")
-        else:
-            lines.append(
-                f"{result.tool}: проверить не удалось"
-                + (f" ({result.error})" if result.error else "")
-            )
+            continue
+
+        kind = error_kind(result.error)
+        # The class name, not the message: this line is rendered as ordinary
+        # chat prose, and a provider's message can carry an account name or an
+        # internal host.
+        lines.append(
+            f"{result.tool}: проверить не удалось"
+            + (f" ({kind})" if kind else "")
+        )
 
     return lines
 

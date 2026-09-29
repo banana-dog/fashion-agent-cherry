@@ -178,7 +178,20 @@ class TestOneRound:
         [result] = ToolCallRunner([Failing()], max_calls=3, model=model).run_turn([])
 
         assert result.ok is False
-        assert "источник упал" in result.error
+        # The class name only: this string is shown to a client, and a provider's
+        # message can carry an account name or an internal host.
+        assert result.error == "RuntimeError"
+
+    def test_a_failed_tool_never_answers_with_a_blank_result(self):
+        """An empty answer would let the model fill the gap from its memory."""
+        from fashion_agent.tool_calling import _answer
+
+        said = _answer(
+            ToolResult(tool="failing", ok=False, error="RuntimeError")
+        )
+
+        assert said != ""
+        assert "недоступен" in said
 
 
 class TestBudget:

@@ -61,7 +61,12 @@ class SerpApiClient:
         if memoized is not None:
             return memoized[1], 0
 
-        cached = self.cache.get(cache_key) if self.cache else None
+        try:
+            cached = self.cache.get(cache_key) if self.cache else None
+        except (OSError, ValueError, KeyError, TypeError):
+            # A corrupt cache file must not stop the search it was meant to
+            # speed up.
+            cached = None
 
         if cached is not None:
             self._remember(cache_key, ("", cached))
@@ -71,7 +76,12 @@ class SerpApiClient:
         payload, attempts = self._request(params)
 
         if self.cache is not None:
-            self.cache.set(cache_key, payload)
+            try:
+                self.cache.set(cache_key, payload)
+            except OSError:
+                # A cache that cannot be written is not a failed search. Losing
+                # the cache is an inconvenience; losing the outfit is worse.
+                pass
 
         self._remember(cache_key, ("", payload))
 
@@ -92,7 +102,10 @@ class SerpApiClient:
                     timeout=self.timeout,
                     follow_redirects=True,
                 )
-            except (httpx.TimeoutException, httpx.TransportError) as error:
+            except httpx.HTTPError as error:
+                # The whole family, not just timeouts: a redirect loop is a
+                # RequestError but not a TransportError, and it used to escape
+                # every caller that only knew about the narrower kinds.
                 last_error = error
 
                 if attempt < self.attempts:
