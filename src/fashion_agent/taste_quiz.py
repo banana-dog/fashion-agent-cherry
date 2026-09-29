@@ -96,6 +96,11 @@ def load_cards(path: Path | None = None) -> list[OutfitCard]:
 # teach from it, rarely enough that the quiz still feels like a quiz.
 MIXED_ROUND_CHANCE = 0.4
 
+# Comparing two of her own photos is the question she came with, so it is offered
+# more readily than a card, but not so readily that the quiz becomes a wall of
+# self-portraits.
+OWN_PAIR_CHANCE = 0.6
+
 
 def reference_side(reference: dict) -> dict:
     """A client's photo, in the same shape a card is stored in.
@@ -117,10 +122,70 @@ def reference_side(reference: dict) -> dict:
     }
 
 
+def _with_attributes(references: list[dict]) -> list[dict]:
+    """Only photos with something recognised on them.
+
+    A blank photo next to anything teaches nothing, and asking the question
+    anyway would record a vote that says only "I did not notice".
+    """
+    return [
+        reference
+        for reference in references
+        if [
+            value
+            for value in (reference.get("attributes") or [])
+            if isinstance(value, str) and ":" in value
+        ]
+    ]
+
+
+def _own_candidates(
+    references: list[dict],
+    exposure: Counter,
+    *,
+    seen: set,
+) -> list[list[dict]]:
+    """Two of the client's own photos, side by side.
+
+    A liked photo against a disliked one carries the most: the attributes differ
+    in exactly the places she has already said she cares about. Photos she liked
+    the same amount are paired last, because the contrast there is thinner and
+    teaches less.
+    """
+    scored: list[tuple[list[dict], bool]] = []
+
+    for first, second in combinations(references, 2):
+        left = reference_side(first)
+        right = reference_side(second)
+
+        if left["id"] == right["id"]:
+            continue
+
+        if not set(left["attributes"]) ^ set(right["attributes"]):
+            continue
+
+        if tuple(sorted((left["id"], right["id"]))) in seen:
+            continue
+
+        # A liked photo against a disliked one says the most about the places
+        # she has already named.
+        scored.append(
+            ([left, right], first.get("liked") is not second.get("liked"))
+        )
+
+    scored.sort(key=lambda entry: not entry[1])
+
+    return [sides for sides, _opposite in scored]
+
+
 def _is_mixed(cards: list[dict]) -> bool:
     kinds = {card.get("kind", "card") for card in cards}
 
     return kinds == {"card", "reference"}
+
+
+def _is_own_pair(cards: list[dict]) -> bool:
+    return {card.get("kind", "card") for card in cards} == {"reference"}
 
 
 def _side_payload(card: dict) -> dict:
@@ -268,9 +333,11 @@ class TasteQuiz:
     ) -> dict:
         """Offer the next pair.
 
-        Once the client has sent photos of their own, those photos are worth
-        putting beside a curated card: the choice is easier to make against
-        something known than between two strangers' outfits.
+        Two things change once the client has sent photos of their own. Those
+        photos can be put beside a curated card, which is an easier question than
+        choosing between two strangers' outfits. And two of them can be put side
+        by side, which is the question she was already half-answering when she
+        marked one of them as liked and the other as not.
         """
         cards = [card for card in cards if getattr(card, "duplicate_of", None) is None]
         with self._connect() as db:
@@ -302,27 +369,36 @@ class TasteQuiz:
                 if tuple(sorted((left.id, right.id))) not in seen
                 and set(left.attributes) != set(right.attributes)
             ]
+            usable = _with_attributes(references or [])
             mixed = self._mixed_candidates(
                 cards,
-                references or [],
+                usable,
                 exposure,
                 seen=seen,
             )
+            own = _own_candidates(usable, exposure, seen=seen)
             # Two rounds in a row against the client's own photo would turn the
             # quiz into one long question about themselves. But that preference
             # must not empty the quiz: with no card pair left to offer, the
             # client's own photo is still the better question.
-            last_was_mixed = bool(rows) and _is_mixed(json.loads(rows[-1]["cards"]))
+            last = json.loads(rows[-1]["cards"]) if rows else []
+            last_was_mixed = _is_mixed(last)
+            last_was_own = _is_own_pair(last)
 
             if candidates and last_was_mixed:
                 mixed = []
 
-            if mixed and (not candidates or random.random() < MIXED_ROUND_CHANCE):
-                pair = min(
-                    mixed,
-                    key=lambda sides: exposure[sides[0]["id"]]
-                    + exposure[sides[1]["id"]],
-                )
+            if (candidates or mixed) and last_was_own:
+                # A wall of self-portraits is as monotonous as a wall of strangers,
+                # but it must not be the reason the quiz empties.
+                own = []
+
+            least_seen = lambda sides: exposure[sides[0]["id"]] + exposure[sides[1]["id"]]
+
+            if own and (not mixed or random.random() < OWN_PAIR_CHANCE):
+                pair = min(own, key=least_seen)
+            elif mixed and (not candidates or random.random() < MIXED_ROUND_CHANCE):
+                pair = min(mixed, key=least_seen)
             elif candidates:
                 # Explore the collection first; random ties and sides reduce
                 # position bias.
@@ -393,11 +469,21 @@ class TasteQuiz:
 
     @staticmethod
     def _pair_payload(round_id: str, cards: list[dict], answered: int) -> dict:
-        return {
+        payload = {
             "round_id": round_id,
             "cards": [_side_payload(card) for card in cards],
             "answered": answered,
         }
+
+        if _is_own_pair(cards):
+            # Two sides both captioned "your photo" would read as a broken
+            # quiz, so the pair says plainly what it is.
+            payload["note"] = (
+                "Обе фотографии — ваши. Которая из них ближе к тому, "
+                "как вы хотели бы одеваться?"
+            )
+
+        return payload
 
     def answer(self, user_id: str, round_id: str, choice: str) -> None:
         if choice not in {"left", "right", "skip"}:

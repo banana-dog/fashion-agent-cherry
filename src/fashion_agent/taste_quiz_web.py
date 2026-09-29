@@ -11,6 +11,7 @@ TASTE_QUIZ_HTML = r"""
   /* A photo of the client must not read as a card from the collection. */
   .taste-card-own { border-style: dashed; border-color: var(--accent); background: #fff8fa; }
   .taste-card-own .taste-card-caption { color: var(--accent); font-weight: 600; }
+  .taste-pair-note { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
   .taste-actions { display: flex; gap: 12px; margin-top: 14px; white-space: normal; }
   .taste-profile { border-left: 4px solid var(--accent) !important; }
   @media (max-width: 520px) {
@@ -53,6 +54,12 @@ TASTE_QUIZ_HTML = r"""
     container.className = "taste-active";
     const grid = document.createElement("div");
     grid.className = "taste-pair";
+    if (pair.note) {
+      const note = document.createElement("p");
+      note.className = "taste-pair-note";
+      note.textContent = pair.note;
+      container.appendChild(note);
+    }
     container.appendChild(grid);
     activeTastePair = {roundId: pair.round_id, node: container};
     pair.cards.forEach((card, index) => {

@@ -36,6 +36,13 @@ REFERENCE = {
     "image_url": "/api/wardrobe/references/ref123/image",
     "attributes": ["color:black", "fit:oversize"],
 }
+SECOND_REFERENCE = {
+    "id": "ref456",
+    "kind": "reference",
+    "description": "Ваше фото",
+    "image_url": "/api/wardrobe/references/ref456/image",
+    "attributes": ["color:pink", "fit:slim"],
+}
 
 
 def jpeg(shade: int) -> bytes:
@@ -93,12 +100,15 @@ def server(tmp_path, monkeypatch):
     reset_look_store()
 
     wardrobe = get_wardrobe()
-    wardrobe.add_reference(
-        "mix-user",
-        image_path=wardrobe.store_image("mix-user", jpeg(120), ".jpg", reference=True),
-        liked=True,
-        attributes=REFERENCE["attributes"],
-    )
+    for reference, shade in ((REFERENCE, 120), (SECOND_REFERENCE, 190)):
+        wardrobe.add_reference(
+            "mix-user",
+            image_path=wardrobe.store_image(
+                "mix-user", jpeg(shade), ".jpg", reference=True
+            ),
+            liked=reference is REFERENCE,
+            attributes=reference["attributes"],
+        )
 
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), __import__(
         "fashion_agent.web", fromlist=["CherryWebHandler"]
@@ -122,15 +132,15 @@ def client(server):
     return _client
 
 
-def force_mixed(client):
-    """Take rounds until the client is shown their own photo."""
+def force_mixed(client, want: str = "mixed"):
+    """Take rounds until the client is shown the kind of pair we need."""
     import fashion_agent.taste_quiz as quiz_module
 
     original = quiz_module.random.random
     quiz_module.random.random = lambda: 0.0
 
     try:
-        for _ in range(4):
+        for _ in range(6):
             status, pair = client.request(
                 "POST",
                 "/api/taste/next",
@@ -140,7 +150,12 @@ def force_mixed(client):
             if status != 200 or not pair.get("cards"):
                 return None
 
-            if any(card.get("kind") == "reference" for card in pair["cards"]):
+            kinds = [card.get("kind") for card in pair["cards"]]
+
+            if want == "own" and kinds == ["reference", "reference"]:
+                return pair
+
+            if want == "mixed" and sorted(kinds) == ["card", "reference"]:
                 return pair
 
             client.request(
@@ -226,7 +241,9 @@ class TestMixedPairOverHttp:
             "POST", "/api/taste/next", body=json.dumps({"user_id": "mix-user"}).encode()
         )
 
-        assert after["answered"] == 1
+        # force_mixed answers rounds while looking, so the count grew by exactly
+        # this one rather than being one.
+        assert after["answered"] == 2
 
 
 class TestMixedPairInBrowser:
@@ -270,12 +287,18 @@ class TestMixedPairInBrowser:
                     "(data) => renderTasteResponse({taste_pair: data, reply: ''})", payload
                 )
 
-                if any(card.get("kind") == "reference" for card in payload["cards"]):
+                kinds = sorted(card.get("kind") for card in payload["cards"])
+
+                if kinds == ["card", "reference"]:
                     return payload
 
+                # An unanswered round is served again, so the search for the
+                # pair we want has to answer the ones it does not want.
                 page.evaluate(
-                    "(roundId) => { activeTastePair.roundId = roundId;"
-                    " activeTastePair.node = null; activeTastePair = null; }",
+                    "async (roundId) => fetch('/api/taste/answer', {method: 'POST',"
+                    " headers: {'Content-Type': 'application/json'},"
+                    " body: JSON.stringify({user_id: 'mix-user', round_id: roundId,"
+                    " choice: 'right'})})",
                     payload["round_id"],
                 )
         finally:
@@ -306,6 +329,123 @@ class TestMixedPairInBrowser:
 
     def test_both_photos_load(self, page):
         assert self._show_pair(page) is not None
+        page.wait_for_function(
+            "() => [...document.querySelectorAll('.taste-card img')]"
+            ".every(img => img.complete && img.naturalWidth > 0)"
+        )
+
+        assert page.locator(".taste-card img").count() == 2
+
+
+class TestOwnPhotoPairOverHttp:
+    def test_two_of_her_photos_are_offered_together(self, client):
+        pair = force_mixed(client, want="own")
+
+        assert pair is not None, "no pair of her own photos was ever offered"
+        assert [card["kind"] for card in pair["cards"]] == ["reference", "reference"]
+
+    def test_the_pair_explains_that_both_pictures_are_hers(self, client):
+        pair = force_mixed(client, want="own")
+
+        assert pair is not None
+        assert "Обе фотографии — ваши" in pair["note"]
+
+    def test_both_of_her_photos_load(self, client):
+        pair = force_mixed(client, want="own")
+
+        assert pair is not None
+
+        for card in pair["cards"]:
+            status, raw = client.request("GET", card["image_url"])
+
+            assert status == 200
+            assert raw[:2] == b"\xff\xd8"
+
+    def test_a_stranger_cannot_reach_either_photo(self, client, server):
+        pair = force_mixed(client, want="own")
+
+        assert pair is not None
+        stranger = Client(server)
+        stranger.request("GET", "/")
+
+        for card in pair["cards"]:
+            status, _raw = stranger.request("GET", card["image_url"])
+
+            assert status in {403, 404}
+
+
+class TestOwnPhotoPairInBrowser:
+    @pytest.fixture
+    def page(self, server):
+        playwright_api = pytest.importorskip("playwright.sync_api")
+
+        with playwright_api.sync_playwright() as playwright:
+            browser = playwright.chromium.launch()
+            page = browser.new_page(viewport={"width": 1100, "height": 1000})
+            errors: list[str] = []
+            page.on("pageerror", lambda error: errors.append(str(error)))
+            page.goto(server + "/")
+
+            yield page
+
+            page.screenshot(path="/tmp/cherry-own-pair.png")
+            browser.close()
+
+        assert errors == [], f"page errors: {errors}"
+
+    def _show_own_pair(self, page):
+        import fashion_agent.taste_quiz as quiz_module
+
+        original = quiz_module.random.random
+        quiz_module.random.random = lambda: 0.0
+
+        try:
+            for _ in range(6):
+                payload = page.evaluate(
+                    "async () => (await fetch('/api/taste/next', {method: 'POST',"
+                    " headers: {'Content-Type': 'application/json'},"
+                    " body: JSON.stringify({user_id: 'mix-user'})})).json()"
+                )
+
+                if not payload.get("cards"):
+                    return None
+
+                kinds = sorted(card.get("kind") for card in payload["cards"])
+
+                if kinds == ["reference", "reference"]:
+                    page.evaluate(
+                        "(data) => renderTasteResponse({taste_pair: data, reply: ''})",
+                        payload,
+                    )
+                    return payload
+
+                page.evaluate(
+                    "async (roundId) => fetch('/api/taste/answer', {method: 'POST',"
+                    " headers: {'Content-Type': 'application/json'},"
+                    " body: JSON.stringify({user_id: 'mix-user', round_id: roundId,"
+                    " choice: 'right'})})",
+                    payload["round_id"],
+                )
+        finally:
+            quiz_module.random.random = original
+
+        return None
+
+    def test_the_client_is_told_both_pictures_are_theirs(self, page):
+        """Two sides both captioned "your photo" read as a broken quiz."""
+        assert self._show_own_pair(page) is not None
+        page.wait_for_selector(".taste-pair-note")
+
+        assert "Обе фотографии — ваши" in page.locator(".taste-pair-note").inner_text()
+
+    def test_both_sides_are_marked_as_her_photos(self, page):
+        assert self._show_own_pair(page) is not None
+        page.wait_for_selector(".taste-card-own")
+
+        assert page.locator(".taste-card-own").count() == 2
+
+    def test_both_photos_load(self, page):
+        assert self._show_own_pair(page) is not None
         page.wait_for_function(
             "() => [...document.querySelectorAll('.taste-card img')]"
             ".every(img => img.complete && img.naturalWidth > 0)"
