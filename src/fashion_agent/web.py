@@ -611,7 +611,10 @@ HTML_PAGE = """<!doctype html>
         </div>
 
         <div class="panel-actions">
-          <a href="/cards" style="color:var(--accent);text-align:center;padding:8px">Коллекция образов</a>
+          <div style="text-align:center;padding:4px">
+            <a href="/me" style="color:var(--accent);padding:8px">Обо мне</a>
+            <a href="/cards" style="color:var(--accent);padding:8px">Коллекция образов</a>
+          </div>
           <button id="newChatButton" class="secondary" type="button">
             Новый разговор
           </button>
@@ -1796,6 +1799,18 @@ class CherryWebHandler(BaseHTTPRequestHandler):
             )
             return
 
+        if urlsplit(self.path).path in {"/me", "/me/"}:
+            self._handle_cabinet_page()
+            return
+
+        if self.path == "/api/cabinet":
+            _session_id, session, _is_new = self._ensure_session()
+
+            from fashion_agent.cabinet import build
+
+            self._send_json(HTTPStatus.OK, build(session["user_id"]).as_dict())
+            return
+
         if urlsplit(self.path).path in {"/cards", "/cards/"}:
             try:
                 self._send_html(render_catalog(load_cards()))
@@ -2192,6 +2207,14 @@ class CherryWebHandler(BaseHTTPRequestHandler):
             {"user_id": session["user_id"], "anonymous": True},
             set_cookie=_cookie(fresh),
         )
+
+    def _handle_cabinet_page(self) -> None:
+        """One page with everything known about this person, gaps included."""
+        from fashion_agent.cabinet import build
+        from fashion_agent.cabinet_web import render
+
+        _session_id, session, _is_new = self._ensure_session()
+        self._send_html(render(build(session["user_id"])))
 
     def _handle_export(self) -> None:
         """Everything held about this person, as a file they can keep."""
