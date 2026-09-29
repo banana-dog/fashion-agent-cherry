@@ -1,6 +1,9 @@
 import base64
 import html
 import io
+import threading
+from contextlib import suppress
+from typing import Any
 
 import httpx
 from PIL import Image
@@ -282,26 +285,71 @@ def build_collage_html(
 """
 
 
+_render_lock = threading.Lock()
+_session: Any = None
+_browser: Any = None
+
+
+def close_renderer() -> None:
+    """Let go of the browser, so a process can exit without being asked."""
+    global _session, _browser
+
+    with _render_lock:
+        # A browser that has already died still has to be let go of, and a
+        # failure while doing so is not worth propagating: nothing is waiting on
+        # it and there is nothing left to save.
+        with suppress(Exception):
+            if _browser is not None:
+                _browser.close()
+
+        with suppress(Exception):
+            if _session is not None:
+                _session.stop()
+
+        _browser = None
+        _session = None
+
+
+def _renderer():
+    """One browser for every collage this process will ever make.
+
+    Launching Chromium costs about a second and a few hundred megabytes, and the
+    old code did it once per outfit, inside the request. It is kept for the life
+    of the process instead, and guarded by a lock because Playwright's
+    synchronous API is not safe to use from two threads at once.
+    """
+    global _session, _browser
+
+    from playwright.sync_api import sync_playwright
+
+    if _browser is None:
+        _session = sync_playwright().start()
+        _browser = _session.chromium.launch()
+
+    return _browser
+
+
 def render_html_to_png(
     html_string: str,
 ) -> bytes:
-    from playwright.sync_api import sync_playwright
-
-    with sync_playwright() as playwright:
-        browser = playwright.chromium.launch()
+    with _render_lock:
+        browser = _renderer()
         page = browser.new_page(
             viewport={
                 "width": COLLAGE_WIDTH,
                 "height": COLLAGE_HEIGHT,
-            }
+            },
         )
-        page.set_content(
-            html_string,
-            wait_until="load",
-        )
-        image_bytes = page.locator(".board").screenshot(type="png")
-        browser.close()
-        return image_bytes
+
+        try:
+            page.set_content(
+                html_string,
+                wait_until="load",
+            )
+
+            return page.locator(".board").screenshot(type="png")
+        finally:
+            page.close()
 
 
 def build_outfit_collage_data_url(

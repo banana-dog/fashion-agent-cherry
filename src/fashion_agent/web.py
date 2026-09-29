@@ -35,7 +35,6 @@ from fashion_agent.wardrobe_web import (
     serve_wardrobe_image,
     update_wardrobe_item,
 )
-from fashion_agent.web_collage import build_outfit_collage_data_url
 
 SESSION_COOKIE = "cherry_session"
 
@@ -424,6 +423,7 @@ HTML_PAGE = """<!doctype html>
         border-top: 1px solid var(--line);
       }
 
+      .collage-waiting { color: var(--muted); font-size: 13px; margin: 0; padding: 12px 0; }
       .outfit-collage {
         margin-top: 14px;
         overflow: hidden;
@@ -755,11 +755,16 @@ HTML_PAGE = """<!doctype html>
             `;
             outfitNode.appendChild(header);
 
+            const collageNode = document.createElement("div");
+            collageNode.className = "outfit-collage";
+            outfitNode.appendChild(collageNode);
+
             if (outfit.collage_data_url) {
-              const collageNode = document.createElement("div");
-              collageNode.className = "outfit-collage";
               collageNode.innerHTML = `<img src="${outfit.collage_data_url}" alt="Коллаж образа ${outfitIndex + 1}" loading="lazy">`;
-              outfitNode.appendChild(collageNode);
+            } else if (outfit.collage_id) {
+              // The picture is being made; ask for it rather than waiting here.
+              collageNode.innerHTML = '<p class="collage-waiting">Собираю коллаж…</p>';
+              waitForCollage(outfit.collage_id, collageNode, outfitIndex + 1);
             }
 
             const itemsNode = document.createElement("div");
@@ -956,6 +961,48 @@ HTML_PAGE = """<!doctype html>
       document.getElementById("accountExport").addEventListener("click", exportData);
       document.getElementById("accountForget").addEventListener("click", forgetMe);
       fetch("/api/account").then(r => r.json()).then(showAccount).catch(() => {});
+
+      const collageWaits = new Map();
+
+      async function waitForCollage(collageId, node, index) {
+        // One poll per collage, however many places show it.
+        if (collageWaits.has(collageId)) {
+          await collageWaits.get(collageId).then(
+            () => showCollage(node, collageId, index),
+          );
+          return;
+        }
+
+        const waiting = (async () => {
+          for (let attempt = 0; attempt < 40; attempt += 1) {
+            try {
+              const response = await fetch(`/api/collage/${collageId}`);
+              if (!response.ok) break;
+              const data = await response.json();
+              if (data.status === "ready") return data;
+              if (data.status === "failed" || data.status === "expired") break;
+            } catch (_) {
+              break;
+            }
+            await new Promise(resolve => setTimeout(resolve, 700));
+          }
+          return {status: "failed", data_url: null, message: "Коллаж не получился"};
+        })();
+
+        collageWaits.set(collageId, waiting);
+        const data = await waiting;
+        collageWaits.delete(collageId);
+        showCollage(node, collageId, index, data);
+      }
+
+      function showCollage(node, collageId, index, ready) {
+        if (!node.isConnected) return;
+        if (ready && ready.data_url) {
+          node.innerHTML = `<img src="${ready.data_url}" alt="Коллаж образа ${index}" loading="lazy">`;
+        } else {
+          node.innerHTML = '<p class="collage-waiting">Коллаж не получился — образ выше виден целиком.</p>';
+        }
+      }
 
       async function sendMessage(message) {
         saveSettings();
@@ -1514,38 +1561,62 @@ def new_session_state(
 def serialize_outfits(
     outfits: list[dict],
 ) -> list[dict]:
-    return [
-        {
-            "id": outfit["id"],
-            "total_price": outfit["total_price"],
-            "currency": outfit["currency"],
-            "owned_count": outfit.get("owned_count", 0),
-            "to_buy_count": outfit.get("to_buy_count", 0),
-            "explanation": outfit.get(
-                "explanation",
-                "",
-            ),
-            "collage_data_url": build_outfit_collage_data_url(outfit),
-            "issues": outfit.get(
-                "issues",
-                [],
-            ),
-            "items": [
-                {
-                    "id": item["id"],
-                    "title": item["title"],
-                    "price": item["price"],
-                    "currency": item["currency"],
-                    "source": item["source"],
-                    "origin": item.get("origin", "shop"),
-                    "url": item.get("url"),
-                    "image_url": item.get("image_url"),
-                }
-                for item in outfit["items"]
-            ],
-        }
-        for outfit in outfits[:3]
-    ]
+    """Answer straight away and let the pictures arrive on their own.
+
+    The collage used to be built inside this call, so a client waited for four
+    downloads, four background removals and a browser launch before the first
+    word of the reply appeared. Now the reply carries a key and the picture is
+    collected separately.
+    """
+    from fashion_agent.collage_jobs import collage_key, get_collage_cache
+
+    cache = get_collage_cache()
+
+    return [_serialise_one(outfit, cache, collage_key) for outfit in outfits]
+
+
+def _serialise_one(
+    outfit: dict,
+    cache,
+    collage_key,
+) -> dict:
+    job = cache.request(collage_key(outfit), outfit)
+    payload = {
+        "id": outfit["id"],
+        "total_price": outfit["total_price"],
+        "currency": outfit["currency"],
+        "owned_count": outfit.get("owned_count", 0),
+        "to_buy_count": outfit.get("to_buy_count", 0),
+        "explanation": outfit.get(
+            "explanation",
+            "",
+        ),
+        "collage_id": job.key,
+        # Already-made pictures come back with the answer; a new one is fetched
+        # a moment later.
+        "collage_data_url": job.data_url,
+        "collage_ready": job.status == "ready",
+        "collage_status": job.status,
+        "issues": outfit.get(
+            "issues",
+            [],
+        ),
+        "items": [
+            {
+                "id": item["id"],
+                "title": item["title"],
+                "price": item["price"],
+                "currency": item["currency"],
+                "source": item["source"],
+                "origin": item.get("origin", "shop"),
+                "url": item.get("url"),
+                "image_url": item.get("image_url"),
+            }
+            for item in outfit["items"]
+        ],
+    }
+
+    return payload
 
 
 def web_reply_text(
@@ -1816,6 +1887,11 @@ class CherryWebHandler(BaseHTTPRequestHandler):
                     "count": len(items),
                 },
             )
+            return
+
+        if path.startswith("/api/collage/"):
+            self._ensure_session()
+            self._handle_collage(path.rsplit("/", 1)[-1])
             return
 
         if self.path == "/api/cabinet":
@@ -2230,6 +2306,32 @@ class CherryWebHandler(BaseHTTPRequestHandler):
             HTTPStatus.OK,
             {"user_id": session["user_id"], "anonymous": True},
             set_cookie=_cookie(fresh),
+        )
+
+    def _handle_collage(self, key: str) -> None:
+        """Collect a collage that was being made in the background.
+
+        A picture that is not there yet is reported as not there yet, with a
+        reason, rather than as an empty box the client has to guess about.
+        """
+        from fashion_agent.collage_jobs import describe, get_collage_cache
+
+        job = get_collage_cache().get(key)
+
+        if job is None:
+            self._send_json(
+                HTTPStatus.NOT_FOUND,
+                {"status": "expired", "data_url": None, "message": "Коллаж устарел"},
+            )
+            return
+
+        self._send_json(
+            HTTPStatus.OK,
+            {
+                "status": job.status,
+                "data_url": job.data_url,
+                "message": describe(job),
+            },
         )
 
     def _handle_purchase_add(self) -> None:

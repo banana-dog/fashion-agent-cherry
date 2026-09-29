@@ -60,11 +60,7 @@ def test_run_agent_turn_uses_thread_and_context(monkeypatch):
         "graph",
         DummyGraph(),
     )
-    monkeypatch.setattr(
-        web,
-        "build_outfit_collage_data_url",
-        lambda outfit: "data:image/png;base64,abc",
-    )
+    _ready_collage(monkeypatch, "data:image/png;base64,abc")
 
     reply = web.run_agent_turn(
         user_input="black dress",
@@ -93,9 +89,8 @@ def test_run_agent_turn_uses_thread_and_context(monkeypatch):
     assert captured["context"].currency == "RUB"
 
 
-def test_serialize_outfits_keeps_image_and_click_target():
-    original = web.build_outfit_collage_data_url
-    web.build_outfit_collage_data_url = lambda outfit: "data:image/png;base64,xyz"
+def test_serialize_outfits_keeps_image_and_click_target(monkeypatch):
+    _ready_collage(monkeypatch, "data:image/png;base64,xyz")
     outfits = web.serialize_outfits(
         [
             {
@@ -128,7 +123,10 @@ def test_serialize_outfits_keeps_image_and_click_target():
             "owned_count": 0,
             "to_buy_count": 1,
             "explanation": "works",
+            "collage_id": outfits[0]["collage_id"],
             "collage_data_url": "data:image/png;base64,xyz",
+            "collage_ready": True,
+            "collage_status": "ready",
             "issues": [],
             "items": [
                 {
@@ -144,7 +142,35 @@ def test_serialize_outfits_keeps_image_and_click_target():
             ],
         }
     ]
-    web.build_outfit_collage_data_url = original
+
+
+class _ReadyCache:
+    """A collage cache whose picture already exists.
+
+    The worker has its own tests; this one is only about what the reply carries,
+    so it hands back a finished job instead of arranging for a thread to finish.
+    """
+
+    def __init__(self, data_url: str):
+        self.data_url = data_url
+        self.requested: list[str] = []
+
+    def request(self, key: str, outfit: dict):
+        from fashion_agent.collage_jobs import CollageJob
+
+        self.requested.append(key)
+
+        return CollageJob(key=key, status="ready", data_url=self.data_url)
+
+    def get(self, key: str):
+        return None
+
+
+def _ready_collage(monkeypatch, data_url: str) -> None:
+    monkeypatch.setattr(
+        "fashion_agent.collage_jobs.get_collage_cache",
+        lambda: _ReadyCache(data_url),
+    )
 
 
 def test_update_session_settings_preserves_existing_values():
