@@ -43,6 +43,7 @@ DATABASE_ENV = (
 def _clear_singletons():
     """Drop module-level caches so the new paths are picked up."""
     from fashion_agent.knowledge.repository import get_knowledge_repository
+    from fashion_agent.look_session import reset_look_store
     from fashion_agent.storage import reset_checkpointer
     from fashion_agent.styleDNA import taste_quiz
     from fashion_agent.trends.scheduler import reset_scheduler
@@ -50,6 +51,7 @@ def _clear_singletons():
 
     reset_checkpointer()
     reset_wardrobe()
+    reset_look_store()
     reset_scheduler()
     taste_quiz.cache_clear()
     get_knowledge_repository.cache_clear()
@@ -81,6 +83,7 @@ def pytest_runtest_setup():
     os.environ["CHERRY_CHECKPOINT_DB"] = str(data_dir / "checkpoints.sqlite3")
     os.environ["CHERRY_WARDROBE_DB"] = str(data_dir / "wardrobe.sqlite3")
     os.environ["CHERRY_WARDROBE_IMAGES"] = str(data_dir / "wardrobe_images")
+    os.environ["CHERRY_LOOKS_DB"] = str(data_dir / "looks.sqlite3")
     os.environ["CHERRY_TREND_DB"] = str(data_dir / "trends.sqlite3")
     os.environ["CHERRY_SEARCH_CACHE"] = str(data_dir / "search_cache.json")
 

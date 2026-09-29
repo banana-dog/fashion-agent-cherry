@@ -10,6 +10,13 @@ from http import HTTPStatus
 
 from fashion_agent.body_profile import advice_ru
 from fashion_agent.client_profile import load_client_profile, profile_ru_lines
+from fashion_agent.look_session import (
+    LookStore,
+    compose_from_changes,
+    critique_diff,
+    diff_ru,
+    items_ru,
+)
 from fashion_agent.reference_taste import NO_SIGNAL_NOTE, profile_lines
 from fashion_agent.vision import (
     VisionCallFailed,
@@ -25,6 +32,12 @@ from fashion_agent.wardrobe import (
     suffix_for,
 )
 from fashion_agent.web_upload import MultipartError, MultipartForm, parse_multipart
+
+
+def _build_store():
+    from fashion_agent.storage import build_store
+
+    return build_store()
 
 MAX_CRITIQUE_BYTES = 8 * 1024 * 1024
 
@@ -383,6 +396,174 @@ def serve_reference_image(
     send_json(handler, HTTPStatus.NOT_FOUND, {"error": "no photo"})
 
 
+def _serialise_session(session) -> dict:
+    payload = {
+        **session.model_dump(mode="json"),
+        "improved": session.improved,
+        "revised_items_ru": items_ru(session.revised_items),
+    }
+
+    if session.after:
+        difference = critique_diff(session.before, session.after)
+        payload["difference"] = difference
+        payload["difference_ru"] = diff_ru(difference)
+
+    return payload
+
+
+def list_looks(
+    handler,
+    user_id: str,
+    store: LookStore | None = None,
+) -> None:
+    store = store or LookStore()
+    sessions = [_serialise_session(session) for session in store.sessions(user_id)]
+
+    send_json(
+        handler,
+        HTTPStatus.OK,
+        {"looks": sessions, "count": len(sessions)},
+    )
+
+
+def revise_look(
+    handler,
+    user_id: str,
+    session_id: str,
+    store: LookStore | None = None,
+) -> None:
+    """Record which of the suggested changes the client is going to make."""
+    store = store or LookStore()
+
+    try:
+        payload = json.loads(
+            handler.rfile.read(
+                int(handler.headers.get("Content-Length", "0") or 0)
+            ).decode("utf-8")
+            or "{}"
+        )
+    except (ValueError, UnicodeDecodeError) as error:
+        send_json(handler, HTTPStatus.BAD_REQUEST, {"error": str(error)})
+        return
+
+    changes = payload.get("changes")
+
+    if not isinstance(changes, list):
+        send_json(
+            handler,
+            HTTPStatus.BAD_REQUEST,
+            {"error": "expected a list of changes"},
+        )
+        return
+
+    wardrobe = get_wardrobe()
+    owned = {
+        item.id: item.model_dump(mode="json")
+        for item in wardrobe.items(user_id)
+    }
+
+    session = store.revise(
+        user_id,
+        session_id,
+        changes,
+        compose_from_changes(changes, owned),
+    )
+
+    if session is None:
+        send_json(handler, HTTPStatus.NOT_FOUND, {"error": "look not found"})
+        return
+
+    send_json(
+        handler,
+        HTTPStatus.OK,
+        {
+            "look": _serialise_session(session),
+            "wardrobe_items": [
+                serialise_item(item) for item in wardrobe.items(user_id)
+            ],
+        },
+    )
+
+
+def reassess_look(
+    handler,
+    user_id: str,
+    session_id: str,
+    store: LookStore | None = None,
+) -> None:
+    """Look at the new photo and put the two assessments side by side."""
+    store = store or LookStore()
+    session = store.get(user_id, session_id)
+
+    if session is None:
+        send_json(handler, HTTPStatus.NOT_FOUND, {"error": "look not found"})
+        return
+
+    try:
+        form = read_upload(handler, max_bytes=MAX_CRITIQUE_BYTES)
+        data, _suffix = read_photo(form)
+    except (MultipartError, ValueError) as error:
+        send_json(handler, HTTPStatus.BAD_REQUEST, {"error": str(error)})
+        return
+
+    vision = get_vision_client()
+
+    if not vision.available:
+        send_json(
+            handler,
+            HTTPStatus.SERVICE_UNAVAILABLE,
+            {"error": "no vision endpoint configured"},
+        )
+        return
+
+    wardrobe = get_wardrobe()
+    profile = load_client_profile(_build_store(), user_id)
+    planned = "; ".join(items_ru(session.revised_items)) or "изменения не записаны"
+
+    try:
+        result = vision.critique_look(
+            data,
+            occasion=session.occasion,
+            request_note=f"Клиент внёс правки и прислал новое фото: {planned}",
+            profile_lines=profile_ru_lines(profile) + advice_ru(profile),
+            wardrobe=[item.model_dump(mode="json") for item in wardrobe.items(user_id)],
+        )
+    except (VisionUnavailable, VisionCallFailed) as error:
+        send_json(handler, HTTPStatus.BAD_GATEWAY, {"error": str(error)})
+        return
+
+    updated = store.reassess(
+        user_id,
+        session_id,
+        result.model_dump(mode="json"),
+    )
+
+    if updated is None:
+        send_json(handler, HTTPStatus.NOT_FOUND, {"error": "look not found"})
+        return
+
+    send_json(
+        handler,
+        HTTPStatus.OK,
+        {"look": _serialise_session(updated), "mean_score": result.mean},
+    )
+
+
+def delete_look(
+    handler,
+    user_id: str,
+    session_id: str,
+    store: LookStore | None = None,
+) -> None:
+    store = store or LookStore()
+
+    if not store.delete(user_id, session_id):
+        send_json(handler, HTTPStatus.NOT_FOUND, {"error": "look not found"})
+        return
+
+    send_json(handler, HTTPStatus.OK, {"ok": True})
+
+
 def critique_look(
     handler,
     user_id: str,
@@ -433,12 +614,23 @@ def critique_look(
         )
         return
 
+    # `store` here is the chat history, not the look book; the look sessions
+    # live in their own table and are reached through the LookStore.
+    session = LookStore().create(
+        user_id,
+        result.model_dump(mode="json"),
+        occasion=occasion or form.text("occasion"),
+    )
+
     send_json(
         handler,
         HTTPStatus.OK,
         {
             "critique": result.model_dump(mode="json"),
             "mean_score": result.mean,
+            # A critique that cannot be acted on is a remark, so the first
+            # assessment opens a session with the changes attached.
+            "look": _serialise_session(session),
             "items": [serialise_item(item) for item in wardrobe.items(user_id)],
         },
     )

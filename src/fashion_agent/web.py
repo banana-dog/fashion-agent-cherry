@@ -22,10 +22,14 @@ from fashion_agent.wardrobe_web import (
     add_reference,
     add_wardrobe_item,
     critique_look,
+    delete_look,
     delete_reference,
     delete_wardrobe_item,
+    list_looks,
     list_references,
     list_wardrobe,
+    reassess_look,
+    revise_look,
     serve_reference_image,
     serve_wardrobe_image,
     update_wardrobe_item,
@@ -258,6 +262,53 @@ HTML_PAGE = """<!doctype html>
 
       .wardrobe-card.unconfirmed {
         border-color: var(--accent);
+      }
+
+      .look-session {
+        margin-bottom: 10px;
+        padding: 10px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+      }
+
+      .look-session h4 {
+        margin: 0 0 6px;
+        font-size: 14px;
+      }
+
+      .look-change {
+        display: flex;
+        gap: 8px;
+        align-items: baseline;
+        margin: 4px 0;
+        font-size: 13px;
+      }
+
+      .look-change label {
+        display: flex;
+        gap: 6px;
+        align-items: baseline;
+        cursor: pointer;
+      }
+
+      .look-diff {
+        font-size: 13px;
+        margin-top: 6px;
+      }
+
+      .look-diff .up {
+        color: #2f7a4f;
+      }
+
+      .look-diff .down {
+        color: #b64b4b;
+      }
+
+      .look-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+        flex-wrap: wrap;
       }
 
       .wardrobe-references {
@@ -581,6 +632,7 @@ HTML_PAGE = """<!doctype html>
           </div>
           <div class="wardrobe-grid" id="wardrobeGrid"></div>
           <div class="wardrobe-references" id="wardrobeReferences"></div>
+          <div class="look-session" id="lookSession" hidden></div>
           <p class="hint" id="tasteNotes"></p>
           <div class="wardrobe-reference-actions">
             <label class="file-button">
@@ -614,6 +666,7 @@ HTML_PAGE = """<!doctype html>
             </button>
           </form>
           <input type="file" id="lookPhoto" accept="image/*" hidden>
+      <input type="file" id="lookPhotoAfter" accept="image/*" hidden>
         </section>
 
         <form class="composer" id="chatForm">
@@ -868,6 +921,8 @@ HTML_PAGE = """<!doctype html>
       const wardrobeCategory = document.getElementById("wardrobeCategory");
       const wardrobeNote = document.getElementById("wardrobeNote");
       const lookPhoto = document.getElementById("lookPhoto");
+      const lookSession = document.getElementById("lookSession");
+      const lookReassess = document.getElementById("lookReassess");
       const wardrobeReferences = document.getElementById("wardrobeReferences");
       const tasteNotes = document.getElementById("tasteNotes");
       const referencePhoto = document.getElementById("referencePhoto");
@@ -1068,6 +1123,186 @@ HTML_PAGE = """<!doctype html>
         }
       });
 
+      function renderLook(look) {
+        lookSession.hidden = false;
+        lookSession.innerHTML = "";
+        const parts = [];
+
+        const heading = document.createElement("h4");
+        heading.textContent = "Оценка образа";
+        parts.push(heading);
+
+        const before = look.before || {};
+        parts.push(summaryLine("Было", before));
+
+        if (look.revised_items && look.revised_items.length) {
+          const revised = document.createElement("div");
+          revised.textContent = "Что надеть вместо этого:";
+          parts.push(revised);
+
+          (look.revised_items_ru || []).forEach(line => {
+            const item = document.createElement("div");
+            item.className = "look-change";
+            item.textContent = line;
+            parts.push(item);
+          });
+        }
+
+        if (look.after) {
+          parts.push(summaryLine("Стало", look.after));
+        }
+
+        parts.forEach(node => lookSession.appendChild(node));
+
+        if (look.before && (look.before.changes || []).length && look.state === "assessed") {
+          const accepted = look.before.changes;
+          const rows = document.createElement("div");
+
+          accepted.forEach((change, index) => {
+            const row = document.createElement("div");
+            row.className = "look-change";
+            const label = document.createElement("label");
+            const box = document.createElement("input");
+            box.type = "checkbox";
+            box.checked = true;
+            box.dataset.index = index;
+            const text = document.createElement("span");
+            const verb = { replace: "заменить", remove: "убрать", add: "добавить" }[change.action];
+            text.textContent = `${verb}: ${change.target} — ${change.reason}`;
+            label.appendChild(box);
+            label.appendChild(text);
+            row.appendChild(label);
+            rows.appendChild(row);
+          });
+
+          lookSession.appendChild(rows);
+
+          const accept = document.createElement("button");
+          accept.className = "secondary";
+          accept.textContent = "Принять правки";
+          accept.addEventListener("click", () => {
+            const chosen = [...rows.querySelectorAll("input:checked")].map(
+              box => accepted[Number(box.dataset.index)]
+            );
+            applyChanges(look.id, chosen);
+          });
+
+          const actions = document.createElement("div");
+          actions.className = "look-actions";
+          actions.appendChild(accept);
+          lookSession.appendChild(actions);
+        }
+
+        if (!look.after) {
+          // The second photo is the point of the exercise, so the way to send
+          // it stays on screen from the first assessment to the last.
+          const actions = document.createElement("div");
+          actions.className = "look-actions";
+
+          const shoot = document.createElement("button");
+          shoot.className = "secondary";
+          shoot.textContent = "Надела — пришлю новое фото";
+          shoot.addEventListener("click", () => lookPhotoAfter.click());
+          actions.appendChild(shoot);
+
+          const drop = document.createElement("button");
+          drop.className = "secondary";
+          drop.textContent = "Очистить";
+          drop.addEventListener("click", async () => {
+            await wardrobeRequest("DELETE", `/api/wardrobe/looks/${look.id}`);
+            lookSession.hidden = true;
+          });
+          actions.appendChild(drop);
+
+          lookSession.appendChild(actions);
+        } else if (look.difference) {
+          const diff = document.createElement("div");
+          diff.className = "look-diff";
+          diff.textContent = look.difference.summary;
+          lookSession.appendChild(diff);
+
+          Object.values(look.difference.axes || {}).forEach(axis => {
+            if (axis.delta === 0) return;
+            const row = document.createElement("div");
+            const mark = axis.delta > 0 ? "up" : "down";
+            row.className = `look-diff ${mark}`;
+            row.textContent = `${axis.label}: ${axis.before} → ${axis.after} (${axis.delta > 0 ? "+" : ""}${axis.delta})`;
+            lookSession.appendChild(row);
+          });
+
+          (look.difference_ru || []).forEach(line => {
+            // The verdict is already on screen; the list repeats it so the chat
+            // message can stand on its own.
+            if (line.startsWith("•") || line === look.difference.summary) return;
+            const row = document.createElement("div");
+            row.className = "look-diff";
+            row.textContent = line;
+            lookSession.appendChild(row);
+          });
+        }
+      }
+
+      function summaryLine(label, critique) {
+        const mean = [critique.occasion_fit, critique.cohesion, critique.colour_harmony,
+                      critique.proportions, critique.silhouette];
+        const total = mean.reduce((sum, value) => sum + (value || 0), 0);
+        const node = document.createElement("div");
+        node.className = "look-change";
+        node.textContent = `${label}: ${(total / 5).toFixed(1)} из 10 — ${critique.summary || ""}`;
+        return node;
+      }
+
+      async function applyChanges(lookId, changes) {
+        setWardrobeBusy(true);
+        try {
+          const payload = await wardrobeRequest(
+            "POST",
+            `/api/wardrobe/looks/${lookId}/revise`,
+            JSON.stringify({ changes })
+          );
+          renderLook(payload.look);
+          addAssistantMessage(
+            (payload.look.revised_items_ru || []).join("\\n") || "Правки записаны."
+          );
+        } catch (error) {
+          addAssistantMessage(`Не смогла записать правки: ${error.message}`);
+        } finally {
+          setWardrobeBusy(false);
+        }
+      }
+
+      lookPhotoAfter.addEventListener("change", async () => {
+        const file = lookPhotoAfter.files[0];
+        if (!file) return;
+
+        const lookId = lookSession.dataset.lookId;
+        if (!lookId) {
+          addAssistantMessage("Сначала оцени первый образ.");
+          return;
+        }
+
+        const form = new FormData();
+        form.append("photo", file, file.name);
+        setWardrobeBusy(true);
+
+        try {
+          const payload = await wardrobeRequest(
+            "POST",
+            `/api/wardrobe/looks/${lookId}/reassess`,
+            form
+          );
+          renderLook(payload.look);
+          addAssistantMessage(
+            (payload.look.difference_ru || [payload.look.difference.summary]).join("\\n")
+          );
+        } catch (error) {
+          addAssistantMessage(`Не смогла оценить новое фото: ${error.message}`);
+        } finally {
+          setWardrobeBusy(false);
+          lookPhotoAfter.value = "";
+        }
+      });
+
       critiqueButton.addEventListener("click", () => lookPhoto.click());
 
       lookPhoto.addEventListener("change", async () => {
@@ -1083,6 +1318,10 @@ HTML_PAGE = """<!doctype html>
         try {
           const payload = await wardrobeRequest("POST", "/api/wardrobe/look", form);
           const critique = payload.critique;
+          if (payload.look) {
+            lookSession.dataset.lookId = payload.look.id;
+            renderLook(payload.look);
+          }
           const lines = [
             `Оценка образа: ${payload.mean_score.toFixed(1)} из 10.`,
             critique.summary,
@@ -1378,6 +1617,11 @@ class CherryWebHandler(BaseHTTPRequestHandler):
             list_references(self, self._user_id())
             return
 
+        if path == "/api/wardrobe/looks":
+            self._ensure_session()
+            list_looks(self, self._user_id())
+            return
+
         if path.startswith("/api/wardrobe/images/"):
             self._ensure_session()
             serve_wardrobe_image(
@@ -1448,6 +1692,16 @@ class CherryWebHandler(BaseHTTPRequestHandler):
             critique_look(self, self._user_id(), store=build_store())
             return
 
+        if self.path and self.path.startswith("/api/wardrobe/looks/") and self.path.endswith("/revise"):
+            self._ensure_session()
+            revise_look(self, self._user_id(), self._session_id_from_path())
+            return
+
+        if self.path and self.path.startswith("/api/wardrobe/looks/") and self.path.endswith("/reassess"):
+            self._ensure_session()
+            reassess_look(self, self._user_id(), self._session_id_from_path())
+            return
+
         if self.path == "/api/reset":
             self._handle_reset()
             return
@@ -1503,6 +1757,15 @@ class CherryWebHandler(BaseHTTPRequestHandler):
             )
             return
 
+        if path.startswith("/api/wardrobe/looks/"):
+            self._ensure_session()
+            delete_look(
+                self,
+                self._user_id(),
+                path.rsplit("/", 1)[-1],
+            )
+            return
+
         self.send_error(
             HTTPStatus.NOT_FOUND,
             "Not found",
@@ -1548,6 +1811,11 @@ class CherryWebHandler(BaseHTTPRequestHandler):
         session = new_session_state()
         SESSIONS[session_id] = session
         return session_id, session, True
+
+    def _session_id_from_path(self) -> str:
+        # /api/wardrobe/looks/<id>/<action>
+        parts = [part for part in urlsplit(self.path).path.split("/") if part]
+        return parts[3] if len(parts) > 3 else ""
 
     def _user_id(
         self,
