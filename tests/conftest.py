@@ -45,10 +45,12 @@ def _clear_singletons():
     from fashion_agent.knowledge.repository import get_knowledge_repository
     from fashion_agent.storage import reset_checkpointer
     from fashion_agent.styleDNA import taste_quiz
+    from fashion_agent.trends.scheduler import reset_scheduler
     from fashion_agent.wardrobe import reset_wardrobe
 
     reset_checkpointer()
     reset_wardrobe()
+    reset_scheduler()
     taste_quiz.cache_clear()
     get_knowledge_repository.cache_clear()
 

@@ -1,6 +1,6 @@
 import json
 import re
-from datetime import datetime
+from datetime import date, datetime
 
 from langchain_core.messages import SystemMessage
 
@@ -8,7 +8,10 @@ from fashion_agent.knowledge.models import (
     ResolvedStyle,
     RetrievedStyleKnowledge,
 )
-from fashion_agent.knowledge.retrieval import StyleKnowledgeRetriever
+from fashion_agent.knowledge.retrieval import (
+    StyleKnowledgeRetriever,
+    detect_season,
+)
 from fashion_agent.llm import llm
 from fashion_agent.states import FashionState
 
@@ -19,6 +22,7 @@ ATTRIBUTE_RE = re.compile(r"^[a-z_]+:[a-z0-9_]+$")
 
 def retrieve_style_knowledge(
     state: FashionState,
+    runtime=None,
 ):
     request = state.get("request") or {}
     retriever = StyleKnowledgeRetriever()
@@ -27,10 +31,18 @@ def retrieve_style_knowledge(
         vibe=request.get("vibe", []),
         occasion=request.get("occasion"),
         location=request.get("location"),
-        current_date=datetime.now().astimezone().date(),
+        current_date=_client_date(runtime),
     )
 
+    messages = state.get("messages") or []
+    spoken = " ".join(
+        str(getattr(message, "content", ""))
+        for message in messages[-4:]
+    )
+    spoken += " " + str(request.get("occasion") or "")
+
     return {
+        "client_season": detect_season(spoken),
         "retrieved_style_cards": [card.model_dump() for card in knowledge.style_cards],
         "retrieved_outfit_formulas": [
             formula.model_dump() for formula in knowledge.outfit_formulas
@@ -40,6 +52,17 @@ def retrieve_style_knowledge(
         ],
         "resolved_style": None,
     }
+
+
+def _client_date(runtime) -> date:
+    """The date where the client is, not where the server happens to be."""
+    if runtime is not None:
+        moment = getattr(getattr(runtime, "context", None), "local_now", None)
+
+        if callable(moment):
+            return moment().date()
+
+    return datetime.now().astimezone().date()
 
 
 def sanitize_attributes(

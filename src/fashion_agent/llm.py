@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -47,3 +48,10 @@ class Context:
     user_id: str
     locale: str = "ru-RU"
     currency: str = "RUB"
+
+    # The client's own clock. A season and a weather forecast mean nothing
+    # against the server's date when the two are not the same place.
+    now: datetime | None = None
+
+    def local_now(self) -> datetime:
+        return self.now or datetime.now().astimezone()

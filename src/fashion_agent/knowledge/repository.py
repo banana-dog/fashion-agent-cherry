@@ -14,7 +14,15 @@ DATA_DIR = Path(__file__).resolve().parent / "data"
 def normalize_alias(
     value: str,
 ) -> str:
-    return " ".join(value.strip().lower().replace("_", " ").split())
+    """Fold a name to one spelling, so lookups are not a spelling test.
+
+    Underscores and hyphens both mean a space here. Without that, a city like
+    "Нью-Йорк" never matches a table that spells it with a space, and a style
+    written "old-money" never matches "old money".
+    """
+    folded = value.strip().lower().replace("_", " ").replace("-", " ")
+
+    return " ".join(folded.split())
 
 
 class FashionKnowledgeRepository:

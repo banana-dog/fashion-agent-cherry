@@ -36,6 +36,34 @@ def tokenize(
     }
 
 
+# Russian seasons inflect: "на весну", "к зиме", "летом" share a stem with the
+# dictionary form, so the stem is what is matched.
+SEASON_STEMS = {
+    "winter": ("зим", "снег", "мороз", "холодн", "январ", "феврал", "декабр"),
+    "spring": ("весн", "март", "апрел", "май"),
+    "summer": ("лет", "жарк", "июн", "июл", "август"),
+    "autumn": ("осен", "сентябр", "октябр", "ноябр"),
+}
+
+
+def detect_season(text: str | None) -> str | None:
+    """A season the client named outright.
+
+    Looking for a coat because it is November on the server is right; looking for
+    one because the client said "к весне" while the server says October is not.
+    """
+    if not text:
+        return None
+
+    lowered = text.lower().replace("ё", "е")
+
+    for season, stems in SEASON_STEMS.items():
+        if any(stem in lowered for stem in stems):
+            return season
+
+    return None
+
+
 def season_for_date(
     current_date: date,
 ) -> str:
@@ -53,24 +81,192 @@ def season_for_date(
 def infer_regions(
     location: str | None,
 ) -> set[str]:
+    """Which regions a place belongs to, for matching a trend's audience.
+
+    Built from a table rather than guessed from substrings, because a substring
+    table quietly puts Kazan in Europe and misses every Russian city that is not
+    Moscow.
+    """
     if not location:
         return {"global"}
 
     text = normalize_alias(location)
     regions = {"global"}
 
-    if any(token in text for token in ("москва", "россия", "russia")):
-        regions.add("russia")
-        regions.add("europe")
-    if any(token in text for token in ("paris", "london", "berlin", "milan", "europe")):
-        regions.add("europe")
-    if any(
-        token in text
-        for token in ("new york", "usa", "united states", "los angeles", "canada")
-    ):
-        regions.add("north_america")
+    for table in (COUNTRY_TOKENS, CITY_REGIONS):
+        for token, members in table.items():
+            if token in text:
+                regions |= members
+
+    if len(regions) == 1:
+        # An unknown place is not evidence of anywhere in particular, and saying
+        # nothing is better than guessing a continent.
+        return {"global"}
 
     return regions
+
+
+# The only place a hard-coded list like this belongs: a lookup, not a guess.
+COUNTRY_TOKENS = {
+    "россия": {"russia", "europe"},
+    "рф": {"russia", "europe"},
+    "russia": {"russia", "europe"},
+    "russian federation": {"russia", "europe"},
+    "украина": {"europe"},
+    "ukraine": {"europe"},
+    "беларусь": {"europe"},
+    "belarus": {"europe"},
+    "казахстан": {"asia"},
+    "kazakhstan": {"asia"},
+    "узбекистан": {"asia"},
+    "киргизия": {"asia"},
+    "грузия": {"asia"},
+    "армения": {"asia"},
+    "азербайджан": {"asia"},
+    "израиль": {"asia"},
+    "israel": {"asia"},
+    "турция": {"europe", "asia"},
+    "turkey": {"europe", "asia"},
+    "сша": {"north_america"},
+    "usa": {"north_america"},
+    "united states": {"north_america"},
+    "америка": {"north_america"},
+    "канада": {"north_america"},
+    "canada": {"north_america"},
+    "мексика": {"north_america"},
+    "mexico": {"north_america"},
+    "франция": {"europe"},
+    "france": {"europe"},
+    "париж": {"europe"},
+    "paris": {"europe"},
+    "италия": {"europe"},
+    "italy": {"europe"},
+    "милан": {"europe"},
+    "milan": {"europe"},
+    "испания": {"europe"},
+    "spain": {"europe"},
+    "мадрид": {"europe"},
+    "madrid": {"europe"},
+    "барселона": {"europe"},
+    "berlin": {"europe"},
+    "берлин": {"europe"},
+    "лондон": {"europe"},
+    "london": {"europe"},
+    "великобритания": {"europe"},
+    "united kingdom": {"europe"},
+    "германия": {"europe"},
+    "germany": {"europe"},
+    "нидерланды": {"europe"},
+    "швеция": {"europe"},
+    "швейцария": {"europe"},
+    "польша": {"europe"},
+    "чехия": {"europe"},
+    "китай": {"asia"},
+    "china": {"asia"},
+    "япония": {"asia"},
+    "japan": {"asia"},
+    "япония токио": {"asia"},
+    "индия": {"asia"},
+    "индонезия": {"asia"},
+    "южная корея": {"asia"},
+    "корея": {"asia"},
+    "бразилия": {"south_america"},
+    "бразилия sao": {"south_america"},
+    "аргентина": {"south_america"},
+    "австралия": {"oceania"},
+    "australia": {"oceania"},
+    "новоселандия": {"oceania"},
+}
+
+# Russian cities large enough that a client may name them. Anything not here
+# is matched by country, and failing that, by nothing.
+CITY_REGIONS = {
+    "москва": {"russia", "europe"},
+    "санкт петербург": {"russia", "europe"},
+    "спб": {"russia", "europe"},
+    "петербург": {"russia", "europe"},
+    "казань": {"russia", "europe"},
+    "новосибирск": {"russia", "europe"},
+    "екатеринбург": {"russia", "europe"},
+    "нижний новгород": {"russia", "europe"},
+    "челябинск": {"russia", "europe"},
+    "самара": {"russia", "europe"},
+    "омск": {"russia", "europe"},
+    "ростов": {"russia", "europe"},
+    "уфа": {"russia", "europe"},
+    "краснодар": {"russia", "europe"},
+    "воронеж": {"russia", "europe"},
+    "пермь": {"russia", "europe"},
+    "владивосток": {"russia", "asia"},
+    "сочи": {"russia", "europe"},
+    "калининград": {"russia", "europe"},
+    "минск": {"europe"},
+    "алматы": {"asia"},
+    "ташкент": {"asia"},
+    "бишкек": {"asia"},
+    "тбилиси": {"asia"},
+    "ереван": {"asia"},
+    "баку": {"asia"},
+    "одесса": {"europe"},
+    "киев": {"europe"},
+    "kyiv": {"europe"},
+    "kiev": {"europe"},
+    "новый йорк": {"north_america"},
+    "нью йорк": {"north_america"},
+    "new york": {"north_america"},
+    "лос ангелос": {"north_america"},
+    "los angeles": {"north_america"},
+    "сан франциско": {"north_america"},
+    "san francisco": {"north_america"},
+    "чикаго": {"north_america"},
+    "chicago": {"north_america"},
+    "токио": {"asia"},
+    "tokyo": {"asia"},
+    "шанхай": {"asia"},
+    "пекин": {"asia"},
+    "сеул": {"asia"},
+    "seoul": {"asia"},
+    "дубай": {"asia"},
+    "прага": {"europe"},
+    "prague": {"europe"},
+    "варшава": {"europe"},
+    "warsaw": {"europe"},
+    "будапешт": {"europe"},
+    "лиссабон": {"europe"},
+    "амстердам": {"europe"},
+    "rome": {"europe"},
+    "рим": {"europe"},
+    "вена": {"europe"},
+    "vienna": {"europe"},
+    "вена австрия": {"europe"},
+    "афины": {"europe"},
+    "athens": {"europe"},
+    "осло": {"europe"},
+    "oslo": {"europe"},
+    "хельсинки": {"europe"},
+    "хельсинки финляндия": {"europe"},
+    "стамбул": {"europe", "asia"},
+    "истанбул": {"europe", "asia"},
+    "мумбаи": {"asia"},
+    "дели": {"asia"},
+    "delhi": {"asia"},
+    "бангкок": {"asia"},
+    "bangkok": {"asia"},
+    "сан паулу": {"south_america"},
+    "sao paulo": {"south_america"},
+    "лима": {"south_america"},
+    "токио япония": {"asia"},
+    "сидней австралия": {"oceania"},
+    "манчестер": {"europe"},
+    "edinburgh": {"europe"},
+    "эдинбург": {"europe"},
+    "глазго": {"europe"},
+    "дублин": {"europe"},
+    "seoul south korea": {"asia"},
+    "сидней": {"oceania"},
+    "sydney": {"oceania"},
+    "мельбурн": {"oceania"},
+}
 
 
 def fuzzy_score(

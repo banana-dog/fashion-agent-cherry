@@ -1,6 +1,7 @@
 import json
 import sqlite3
 import uuid
+from datetime import datetime
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -789,6 +790,7 @@ HTML_PAGE = """<!doctype html>
             user_id: settings.userId.value.trim() || "demo-user",
             locale: settings.locale.value,
             currency: settings.currency.value,
+            client_now: new Date().toISOString(),
           }),
         });
 
@@ -815,6 +817,7 @@ HTML_PAGE = """<!doctype html>
             user_id: settings.userId.value.trim() || "demo-user",
             locale: settings.locale.value,
             currency: settings.currency.value,
+            client_now: new Date().toISOString(),
           }),
         });
 
@@ -1133,6 +1136,9 @@ def new_session_state(
         "user_id": user_id,
         "locale": locale,
         "currency": currency,
+        # Filled from the browser on the first message; the server clock is only
+        # a fallback, and is not what the season should be decided from.
+        "client_now": None,
     }
 
 
@@ -1199,6 +1205,27 @@ def web_reply_text(
     return "\n".join(lines)
 
 
+def _client_clock(value) -> datetime | None:
+    """The browser's clock, when the client sent one.
+
+    A season, a forecast and a delivery date are all relative to where the
+    client is. Taking the server's date instead quietly answers the wrong
+    question in every timezone away from the machine.
+    """
+    if not value:
+        return None
+
+    if isinstance(value, datetime):
+        return value
+
+    try:
+        parsed = datetime.fromisoformat(str(value))
+    except ValueError:
+        return None
+
+    return parsed if parsed.tzinfo else None
+
+
 def run_agent_turn(
     *,
     user_input: str,
@@ -1213,6 +1240,7 @@ def run_agent_turn(
         user_id=session["user_id"],
         locale=session["locale"],
         currency=session["currency"],
+        now=_client_clock(session.get("client_now")),
     )
 
     pending = list(session.get("taste_context", []))
@@ -1541,6 +1569,7 @@ class CherryWebHandler(BaseHTTPRequestHandler):
         session["user_id"] = user_id
         session["locale"] = payload.get("locale") or session.get("locale", "ru-RU")
         session["currency"] = payload.get("currency") or session.get("currency", "RUB")
+        session["client_now"] = payload.get("client_now") or session.get("client_now")
 
     def _send_html(
         self,
@@ -1740,6 +1769,7 @@ class CherryWebHandler(BaseHTTPRequestHandler):
                 session,
                 payload,
             )
+            session["client_now"] = payload.get("client_now")
             profile = body_profile_process(session["user_id"], message)
             session["taste_pair"] = None
 
@@ -1796,6 +1826,7 @@ class CherryWebHandler(BaseHTTPRequestHandler):
                 session,
                 payload,
             )
+            session["client_now"] = payload.get("client_now")
 
             response = {
                 "reply": "Новый разговор готов. Расскажи о событии, желаемом стиле и предпочтениях.",
@@ -1835,11 +1866,27 @@ class CherryWebHandler(BaseHTTPRequestHandler):
 def run_web_server(
     host: str = "127.0.0.1",
     port: int = 8000,
+    *,
+    refresh_trends: bool = True,
 ):
+    if refresh_trends:
+        # Kept up with the season without anyone having to ask, and stopped with
+        # the process rather than left running in the background.
+        from fashion_agent.trends.scheduler import get_scheduler
+
+        scheduler = get_scheduler(start=True)
+        print(f"Тренды обновляются каждые {scheduler.interval} по мере надобности")
+
     server = ThreadingHTTPServer(
         (host, port),
         CherryWebHandler,
     )
 
-    print(f"Cherry web UI: http://{host}:{port}")
-    server.serve_forever()
+    try:
+        print(f"Cherry web UI: http://{host}:{port}")
+        server.serve_forever()
+    finally:
+        if refresh_trends:
+            from fashion_agent.trends.scheduler import reset_scheduler
+
+            reset_scheduler()

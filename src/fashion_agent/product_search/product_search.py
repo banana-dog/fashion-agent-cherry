@@ -81,6 +81,9 @@ RETRIEVED OUTFIT FORMULAS:
 ACTIVE TREND CARDS:
 {json.dumps(retrieved_trends, ensure_ascii=False, indent=2)}
 
+SEASON THE CLIENT MEANS:
+{state.get("client_season") or "the one it is where they are"}
+
 WHAT WAS JUST CHECKED OUTSIDE:
 {chr(10).join(state.get("context_lines", [])) or "nothing"}
 
@@ -143,6 +146,10 @@ Use the client sizes to keep the plan realistically: if the
 client wears a 46 top, do not plan a delicate XS knit.
 The client's size is applied as a filter automatically,
 so do not put the size into the query text.
+
+If the client named a season, dress for that season rather than the one the
+date suggests: "к весне" means spring clothes even if it is still February.
+Keep the layers a changeable season needs, not a single heavy coat.
 
 If a forecast was checked, let it decide the outer layer and
 the shoes: below freezing a coat is not optional, in rain the
