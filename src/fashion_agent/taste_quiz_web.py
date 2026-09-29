@@ -49,7 +49,8 @@ TASTE_QUIZ_HTML = r"""
     if (data.taste_profile) message.classList.add("taste-profile");
     if (!data.taste_pair) return;
     const pair = data.taste_pair;
-    tasteUser = settings.userId.value.trim() || "demo-user";
+    // The server decides who this is; the page no longer claims an identity.
+    tasteUser = null;
     const container = document.createElement("div");
     container.className = "taste-active";
     const grid = document.createElement("div");

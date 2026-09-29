@@ -86,6 +86,15 @@ class Client:
                 return error.code, raw
 
 
+def sign_in(page) -> None:
+    """Sign the browser in, the way a returning client arrives."""
+    page.evaluate(
+        "async () => fetch('/api/account/sign-in', {method: 'POST',"
+        " headers: {'Content-Type': 'application/json'},"
+        " body: JSON.stringify({login: 'mixer', passphrase: 'parol12345'})})"
+    )
+
+
 @pytest.fixture
 def server(tmp_path, monkeypatch):
     monkeypatch.setenv("CHERRY_WARDROBE_DB", str(tmp_path / "wardrobe.sqlite3"))
@@ -99,12 +108,19 @@ def server(tmp_path, monkeypatch):
     reset_wardrobe()
     reset_look_store()
 
+    # The identity comes from an account now, so the photographs are put under
+    # the id the server will hand out for it.
+    from fashion_agent.accounts import get_accounts
+
+    accounts = get_accounts()
+    account = accounts.register("mixer", "parol12345")
     wardrobe = get_wardrobe()
+
     for reference, shade in ((REFERENCE, 120), (SECOND_REFERENCE, 190)):
         wardrobe.add_reference(
-            "mix-user",
+            account.user_id,
             image_path=wardrobe.store_image(
-                "mix-user", jpeg(shade), ".jpg", reference=True
+                account.user_id, jpeg(shade), ".jpg", reference=True
             ),
             liked=reference is REFERENCE,
             attributes=reference["attributes"],
@@ -126,8 +142,14 @@ def server(tmp_path, monkeypatch):
 
 @pytest.fixture
 def client(server):
+    """A browser that has signed in, so it sees the photographs above."""
     _client = Client(server)
     _client.request("GET", "/")
+    _client.request(
+        "POST",
+        "/api/account/sign-in",
+        body=json.dumps({"login": "mixer", "passphrase": "parol12345"}).encode(),
+    )
 
     return _client
 
@@ -141,11 +163,7 @@ def force_mixed(client, want: str = "mixed"):
 
     try:
         for _ in range(6):
-            status, pair = client.request(
-                "POST",
-                "/api/taste/next",
-                body=json.dumps({"user_id": "mix-user"}).encode(),
-            )
+            status, pair = client.request("POST", "/api/taste/next", body=b"{}")
 
             if status != 200 or not pair.get("cards"):
                 return None
@@ -229,7 +247,6 @@ class TestMixedPairOverHttp:
             "/api/taste/answer",
             body=json.dumps(
                 {
-                    "user_id": "mix-user",
                     "round_id": pair["round_id"],
                     "choice": "left",
                 }
@@ -237,9 +254,7 @@ class TestMixedPairOverHttp:
         )
 
         assert status == 200
-        _status, after = client.request(
-            "POST", "/api/taste/next", body=json.dumps({"user_id": "mix-user"}).encode()
-        )
+        _status, after = client.request("POST", "/api/taste/next", body=b"{}")
 
         # force_mixed answers rounds while looking, so the count grew by exactly
         # this one rather than being one.
@@ -257,6 +272,7 @@ class TestMixedPairInBrowser:
             errors: list[str] = []
             page.on("pageerror", lambda error: errors.append(str(error)))
             page.goto(server + "/")
+            sign_in(page)
 
             yield page
 
@@ -277,7 +293,7 @@ class TestMixedPairInBrowser:
                 payload = page.evaluate(
                     "async () => (await fetch('/api/taste/next', {method: 'POST',"
                     " headers: {'Content-Type': 'application/json'},"
-                    " body: JSON.stringify({user_id: 'mix-user'})})).json()"
+                    " body: '{}'})).json()"
                 )
 
                 if not payload.get("cards"):
@@ -297,8 +313,7 @@ class TestMixedPairInBrowser:
                 page.evaluate(
                     "async (roundId) => fetch('/api/taste/answer', {method: 'POST',"
                     " headers: {'Content-Type': 'application/json'},"
-                    " body: JSON.stringify({user_id: 'mix-user', round_id: roundId,"
-                    " choice: 'right'})})",
+                    " body: JSON.stringify({round_id: roundId, choice: 'right'})})",
                     payload["round_id"],
                 )
         finally:
@@ -385,6 +400,7 @@ class TestOwnPhotoPairInBrowser:
             errors: list[str] = []
             page.on("pageerror", lambda error: errors.append(str(error)))
             page.goto(server + "/")
+            sign_in(page)
 
             yield page
 
@@ -404,7 +420,7 @@ class TestOwnPhotoPairInBrowser:
                 payload = page.evaluate(
                     "async () => (await fetch('/api/taste/next', {method: 'POST',"
                     " headers: {'Content-Type': 'application/json'},"
-                    " body: JSON.stringify({user_id: 'mix-user'})})).json()"
+                    " body: '{}'})).json()"
                 )
 
                 if not payload.get("cards"):
@@ -422,8 +438,7 @@ class TestOwnPhotoPairInBrowser:
                 page.evaluate(
                     "async (roundId) => fetch('/api/taste/answer', {method: 'POST',"
                     " headers: {'Content-Type': 'application/json'},"
-                    " body: JSON.stringify({user_id: 'mix-user', round_id: roundId,"
-                    " choice: 'right'})})",
+                    " body: JSON.stringify({round_id: roundId, choice: 'right'})})",
                     payload["round_id"],
                 )
         finally:

@@ -465,15 +465,18 @@ class TestOverHttp:
 
     def test_agreeing_to_the_changes_gives_a_list_to_wear(self, client, vision):
         as_user(client, USER)
+        from conftest import client_user_id
+
+        user_id = client_user_id(client)
         look = open_look(client, vision)
         wardrobe = get_wardrobe()
         wardrobe.add_item(
-            USER,
+            user_id,
             name="Чёрные лоферы",
             category="shoes",
             attributes=["shoes:flat"],
         )
-        owned = wardrobe.items(USER)[0].id
+        owned = wardrobe.items(user_id)[0].id
 
         status, payload = agree(
             client,

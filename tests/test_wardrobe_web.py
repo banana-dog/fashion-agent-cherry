@@ -255,24 +255,27 @@ def test_patching_a_missing_item(server):
 def test_wardrobe_listing_explains_the_photo_signal(server):
     base, _module = server
 
+    from conftest import client_user_id
+
     from fashion_agent.wardrobe import get_wardrobe
 
     client = Client(base)
     client.request("GET", "/")
+    user_id = client_user_id(client)
 
     wardrobe = get_wardrobe()
     wardrobe.add_reference(
-        "demo-user",
+        user_id,
         image_path=wardrobe.store_image(
-            "demo-user", JPEG_HEAD, ".jpg", reference=True
+            user_id, JPEG_HEAD, ".jpg", reference=True
         ),
         liked=True,
         attributes=["color:cream", "fit:oversized"],
     )
     wardrobe.add_reference(
-        "demo-user",
+        user_id,
         image_path=wardrobe.store_image(
-            "demo-user", JPEG_HEAD, ".jpg", reference=True
+            user_id, JPEG_HEAD, ".jpg", reference=True
         ),
         liked=False,
         attributes=["fit:skinny"],

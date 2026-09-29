@@ -1,10 +1,11 @@
 from fashion_agent import web
 
 
-def test_new_session_state_uses_defaults():
+def test_new_session_state_has_no_shared_owner():
+    """A default name is how one person's wardrobe became everyone's."""
     session = web.new_session_state()
 
-    assert session["user_id"] == "demo-user"
+    assert session["user_id"] == ""
     assert session["locale"] == "ru-RU"
     assert session["currency"] == "RUB"
     assert session["thread_id"]

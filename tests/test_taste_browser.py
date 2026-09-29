@@ -29,6 +29,11 @@ def test_gallery_and_pairwise_flow_in_browser(tmp_path, monkeypatch):
             errors = []
             page.on("pageerror", lambda error: errors.append(str(error)))
             page.goto(base + "/cards")
+            # The server decides who this browser is, so the test asks rather
+            # than assuming a shared name.
+            user_id = page.evaluate(
+                "async () => (await fetch('/api/account')).json().then(r => r.user_id)"
+            )
             assert page.locator(".card").count() == len(catalog)
             # Validate the real HTTP image route for every catalog entry.
             for card in catalog:
@@ -74,7 +79,7 @@ def test_gallery_and_pairwise_flow_in_browser(tmp_path, monkeypatch):
                     playwright_api.expect(
                         page.locator(".taste-profile")
                     ).to_contain_text("Твой предварительный профиль")
-            assert TasteQuiz().preferences("demo-user")
+            assert TasteQuiz().preferences(user_id)
             assert not errors
         finally:
             browser.close()

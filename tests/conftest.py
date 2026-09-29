@@ -42,6 +42,7 @@ DATABASE_ENV = (
 
 def _clear_singletons():
     """Drop module-level caches so the new paths are picked up."""
+    from fashion_agent.accounts import reset_accounts
     from fashion_agent.knowledge.repository import get_knowledge_repository
     from fashion_agent.look_session import reset_look_store
     from fashion_agent.storage import reset_checkpointer
@@ -49,6 +50,7 @@ def _clear_singletons():
     from fashion_agent.trends.scheduler import reset_scheduler
     from fashion_agent.wardrobe import reset_wardrobe
 
+    reset_accounts()
     reset_checkpointer()
     reset_wardrobe()
     reset_look_store()
@@ -84,7 +86,22 @@ def pytest_runtest_setup():
     os.environ["CHERRY_WARDROBE_DB"] = str(data_dir / "wardrobe.sqlite3")
     os.environ["CHERRY_WARDROBE_IMAGES"] = str(data_dir / "wardrobe_images")
     os.environ["CHERRY_LOOKS_DB"] = str(data_dir / "looks.sqlite3")
+    os.environ["CHERRY_ACCOUNTS_DB"] = str(data_dir / "accounts.sqlite3")
     os.environ["CHERRY_TREND_DB"] = str(data_dir / "trends.sqlite3")
     os.environ["CHERRY_SEARCH_CACHE"] = str(data_dir / "search_cache.json")
 
     _clear_singletons()
+
+
+def client_user_id(client) -> str:
+    """Who the server thinks this browser is.
+
+    Tests used to name a user themselves, which was possible only while every
+    browser shared one name. Now the server decides, so a test that puts data in
+    the wardrobe has to ask who it is being.
+    """
+    status, payload = client.request("GET", "/api/account")
+
+    assert status == 200, payload
+
+    return payload["user_id"]

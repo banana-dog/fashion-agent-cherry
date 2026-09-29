@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 from langchain_core.messages import AIMessage, HumanMessage
 from PIL import Image
 
+from fashion_agent.accounts import get_accounts
 from fashion_agent.body_profile import BodyProfileConversation
 from fashion_agent.graph import graph
 from fashion_agent.storage import build_store
@@ -264,6 +265,8 @@ HTML_PAGE = """<!doctype html>
         border-color: var(--accent);
       }
 
+      .account { display: flex; align-items: center; gap: 8px; }
+      .account-name { font-weight: 600; }
       .look-session {
         margin-bottom: 10px;
         padding: 10px;
@@ -582,10 +585,10 @@ HTML_PAGE = """<!doctype html>
         </p>
 
         <div class="settings">
-          <label>
-            User ID
-            <input id="userId" value="demo-user">
-          </label>
+          <div class="account" id="accountBox">
+            <span class="account-name" id="accountName">Гость</span>
+            <button type="button" class="secondary" id="accountOpen">Войти</button>
+          </div>
           <label>
             Locale
             <select id="locale">
@@ -690,7 +693,7 @@ HTML_PAGE = """<!doctype html>
       const sendButton = document.getElementById("sendButton");
       const newChatButton = document.getElementById("newChatButton");
       const settings = {
-        userId: document.getElementById("userId"),
+    
         locale: document.getElementById("locale"),
         currency: document.getElementById("currency"),
       };
@@ -804,13 +807,15 @@ HTML_PAGE = """<!doctype html>
         setTasteBusy(isBusy);
       }
 
+      // Only preferences live in localStorage now. The client used to keep a
+      // user id here and send it with every request, which let anyone read
+      // anyone else's wardrobe by typing a different name.
       function loadSettings() {
         const raw = window.localStorage.getItem(STORAGE_KEY);
         if (!raw) return;
 
         try {
           const data = JSON.parse(raw);
-          settings.userId.value = data.userId || "demo-user";
           settings.locale.value = data.locale || "ru-RU";
           settings.currency.value = data.currency || "RUB";
         } catch (_) {
@@ -822,12 +827,76 @@ HTML_PAGE = """<!doctype html>
         window.localStorage.setItem(
           STORAGE_KEY,
           JSON.stringify({
-            userId: settings.userId.value.trim() || "demo-user",
             locale: settings.locale.value,
             currency: settings.currency.value,
           }),
         );
       }
+
+      function showAccount(data) {
+        const name = document.getElementById("accountName");
+        const button = document.getElementById("accountOpen");
+        if (data.anonymous) {
+          name.textContent = "Гость";
+          button.textContent = "Войти или зарегистрироваться";
+        } else {
+          name.textContent = data.login;
+          button.textContent = "Выйти";
+        }
+      }
+
+      async function openAccountDialog() {
+        const who = await (await fetch("/api/account")).json();
+        const registering = who.anonymous;
+        const login = prompt(
+          registering ? "Имя для входа" : "Имя для входа",
+          who.login || "",
+        );
+        if (!login) return;
+        const passphrase = prompt("Пароль (не короче 8 символов)");
+        if (!passphrase) return;
+
+        const response = await fetch(
+          registering ? "/api/account" : "/api/account/sign-in",
+          {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({login, passphrase}),
+          },
+        );
+        const data = await response.json();
+        if (!response.ok) {
+          alert(data.error || "Не получилось.");
+          return;
+        }
+        showAccount(data);
+        if (registering) {
+          addAssistantMessage(
+            "Готово. Теперь образы и гардероб будут ждать вас на этом имени —"
+            + " и на любом устройстве, где вы войдёте с ним.",
+          );
+        }
+      }
+
+      async function signOut() {
+        const data = await (await fetch("/api/account/sign-out", {method: "POST"})).json();
+        showAccount(data);
+        addAssistantMessage("Вышли. Гардероб этого аккаунта остался на месте.");
+      }
+
+      document.getElementById("accountOpen").addEventListener("click", async () => {
+        try {
+          const who = await (await fetch("/api/account")).json();
+          if (who.anonymous) {
+            await openAccountDialog();
+          } else {
+            await signOut();
+          }
+        } catch (_) {
+          addAssistantMessage("Не смогла связаться с сервером.");
+        }
+      });
+      fetch("/api/account").then(r => r.json()).then(showAccount).catch(() => {});
 
       async function sendMessage(message) {
         saveSettings();
@@ -840,7 +909,6 @@ HTML_PAGE = """<!doctype html>
           },
           body: JSON.stringify({
             message,
-            user_id: settings.userId.value.trim() || "demo-user",
             locale: settings.locale.value,
             currency: settings.currency.value,
             client_now: new Date().toISOString(),
@@ -867,7 +935,6 @@ HTML_PAGE = """<!doctype html>
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            user_id: settings.userId.value.trim() || "demo-user",
             locale: settings.locale.value,
             currency: settings.currency.value,
             client_now: new Date().toISOString(),
@@ -1364,9 +1431,13 @@ HTML_PAGE = """<!doctype html>
 HTML_PAGE = HTML_PAGE.replace("</body>", TASTE_QUIZ_HTML + "</body>")
 
 
+def _cookie(token: str) -> str:
+    return f"{SESSION_COOKIE}={token}; Path=/; HttpOnly; SameSite=Lax"
+
+
 def new_session_state(
     *,
-    user_id: str = "demo-user",
+    user_id: str = "",
     locale: str = "ru-RU",
     currency: str = "RUB",
 ) -> dict:
@@ -1622,6 +1693,19 @@ class CherryWebHandler(BaseHTTPRequestHandler):
             list_looks(self, self._user_id())
             return
 
+        if path == "/api/account":
+            _session_id, session, _is_new = self._ensure_session()
+            account = get_accounts().account_for(session["user_id"])
+            self._send_json(
+                HTTPStatus.OK,
+                {
+                    "user_id": session["user_id"],
+                    "login": account.login if account else None,
+                    "anonymous": account.anonymous if account else True,
+                },
+            )
+            return
+
         if path.startswith("/api/wardrobe/references/") and path.endswith("/image"):
             # The taste quiz shows a client's own photo beside a card, so the
             # photo has to be fetchable. It is served only to its owner, like
@@ -1718,6 +1802,14 @@ class CherryWebHandler(BaseHTTPRequestHandler):
             self._handle_reset()
             return
 
+        if self.path in {"/api/account", "/api/account/sign-in"}:
+            self._handle_account(register=bool(self.path == "/api/account"))
+            return
+
+        if self.path == "/api/account/sign-out":
+            self._handle_sign_out()
+            return
+
         if self.path == "/api/trends/refresh":
             self._handle_trend_refresh()
             return
@@ -1808,6 +1900,12 @@ class CherryWebHandler(BaseHTTPRequestHandler):
     def _ensure_session(
         self,
     ) -> tuple[str, dict, bool]:
+        """Find the visitor's session, or give them one.
+
+        A returning browser is recognised by the token in its cookie, which
+        lives in the accounts database rather than in this process's memory: a
+        restart used to sign everybody out and hand them a fresh wardrobe.
+        """
         cookie_header = self.headers.get("Cookie", "")
         cookie = SimpleCookie()
         cookie.load(cookie_header)
@@ -1819,8 +1917,18 @@ class CherryWebHandler(BaseHTTPRequestHandler):
         if session_id and session_id in SESSIONS:
             return session_id, SESSIONS[session_id], False
 
-        session_id = str(uuid.uuid4())
-        session = new_session_state()
+        accounts = get_accounts()
+        user_id = accounts.user_for_token(session_id)
+
+        if user_id is not None:
+            session = new_session_state(user_id=user_id)
+            SESSIONS[session_id] = session
+            return session_id, session, False
+
+        # No token worth having: a visitor gets an account of their own rather
+        # than a shared name, so two people on two browsers are two people.
+        session_id = accounts.open_session(accounts.anonymous().user_id)
+        session = new_session_state(user_id=accounts.user_for_token(session_id) or "")
         SESSIONS[session_id] = session
         return session_id, session, True
 
@@ -1846,12 +1954,15 @@ class CherryWebHandler(BaseHTTPRequestHandler):
         session: dict,
         payload: dict,
     ):
-        user_id = payload.get("user_id") or session["user_id"]
-        if user_id != session["user_id"]:
+        # The client does not get to say who it is. It used to send a user id
+        # in every request, which meant anyone could read anyone else's
+        # wardrobe by typing a different name. The session is the only source.
+        claimed = payload.get("user_id")
+
+        if claimed and claimed != session["user_id"]:
             session["thread_id"] = str(uuid.uuid4())
             session.pop("taste_context", None)
             session.pop("taste_pair", None)
-        session["user_id"] = user_id
         session["locale"] = payload.get("locale") or session.get("locale", "ru-RU")
         session["currency"] = payload.get("currency") or session.get("currency", "RUB")
         session["client_now"] = payload.get("client_now") or session.get("client_now")
@@ -1939,16 +2050,93 @@ class CherryWebHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _handle_account(
+        self,
+        *,
+        register: bool,
+    ) -> None:
+        """Register, or sign in, and hand the session the account's identity.
+
+        Registering from a session that already has data keeps that data: the
+        wardrobe a client built before they had an account is theirs, and losing
+        it to the act of registering would be a poor way to treat them.
+        """
+        from fashion_agent.accounts import AccountError
+
+        try:
+            payload = self._read_json()
+
+            if not isinstance(payload, dict):
+                raise TypeError("Ожидается JSON-объект.")
+
+            login = payload.get("login")
+            passphrase = payload.get("passphrase")
+            accounts = get_accounts()
+            session_id, session, _is_new = self._ensure_session()
+
+            if register:
+                account = accounts.register(
+                    login,
+                    passphrase,
+                    take_over_from=session["user_id"],
+                )
+            else:
+                account = accounts.sign_in(login, passphrase)
+
+            session["user_id"] = account.user_id
+            session["thread_id"] = str(uuid.uuid4())
+            session.pop("taste_context", None)
+            session.pop("taste_pair", None)
+            SESSIONS[session_id] = session
+            token = accounts.open_session(account.user_id)
+            SESSIONS[token] = session
+        except (AccountError, TypeError, ValueError) as error:
+            self._send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"error": str(error) or "Не удалось"},
+            )
+            return
+
+        self._send_json(
+            HTTPStatus.OK,
+            {
+                "user_id": account.user_id,
+                "login": account.login,
+                "anonymous": account.anonymous,
+            },
+            set_cookie=_cookie(token),
+        )
+
+    def _handle_sign_out(self) -> None:
+        cookie = SimpleCookie()
+        cookie.load(self.headers.get("Cookie", ""))
+        token = cookie[SESSION_COOKIE].value if SESSION_COOKIE in cookie else None
+
+        if token:
+            SESSIONS.pop(token, None)
+            get_accounts().close_session(token)
+
+        # A new anonymous account, so a shared computer does not leave the
+        # previous person's wardrobe on screen.
+        accounts = get_accounts()
+        fresh = accounts.open_session(accounts.anonymous().user_id)
+        session = new_session_state(user_id=accounts.user_for_token(fresh) or "")
+        SESSIONS[fresh] = session
+
+        self._send_json(
+            HTTPStatus.OK,
+            {"user_id": session["user_id"], "anonymous": True},
+            set_cookie=_cookie(fresh),
+        )
+
     def _handle_taste(self):
         try:
             payload = self._read_json()
             if not isinstance(payload, dict):
                 raise TypeError("Ожидается JSON-объект.")
             session_id, session, is_new = self._ensure_session()
-            user_id = payload.get("user_id") or session["user_id"]
-            if not isinstance(user_id, str) or not user_id.strip():
-                raise ValueError("Укажите пользователя.")
-            self._update_session_settings(session, {**payload, "user_id": user_id})
+            self._update_session_settings(session, payload)
+            user_id = session["user_id"]
             conversation = TasteConversation()
             user_message = None
             if self.path == "/api/taste/next":
