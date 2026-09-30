@@ -72,9 +72,11 @@ def test_run_agent_turn_uses_thread_and_context(monkeypatch):
         },
     )
 
+    # Money the way a person reads it, and no emoji in a sentence that is
+    # read aloud.
     assert (
         reply["reply"]
-        == "🍒 Собрала варианты и показала их карточками ниже.\n1. Образ — 12000 RUB"
+        == "Собрала варианты — карточки ниже.\n1. 12\u2009000\u00a0\u20bd к покупке"
     )
     assert reply["outfits"][0]["collage_data_url"] == "data:image/png;base64,abc"
     assert reply["outfits"][0]["items"][0]["url"] == "https://example.com/dress-1"

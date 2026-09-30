@@ -2041,15 +2041,35 @@ def web_reply_text(
     approved = [outfit for outfit in outfits if outfit.get("approved")]
     selected = approved[:3] if approved else outfits[:3]
 
-    lines = ["🍒 Собрала варианты и показала их карточками ниже."]
+    lines = ["Собрала варианты — карточки ниже."]
 
-    for index, outfit in enumerate(
-        selected,
-        start=1,
-    ):
-        lines.append(f"{index}. Образ — {outfit['total_price']} {outfit['currency']}")
+    for index, outfit in enumerate(selected, start=1):
+        lines.append(
+            f"{index}. {_money(outfit['total_price'], outfit['currency'])} к покупке"
+        )
 
     return "\n".join(lines)
+
+
+CURRENCY_SIGNS = {
+    "RUB": "\u20bd",
+    "USD": "$",
+    "EUR": "\u20ac",
+    "GBP": "\u00a3",
+    "GEL": "\u20be",
+}
+
+
+def _money(value: float, currency: str) -> str:
+    """Money the way a person reads it.
+
+    "16000 RUB" is what a database holds. A thin space and a symbol are what a
+    person reads without having to stop and work it out.
+    """
+    grouped = f"{float(value or 0):,.0f}".replace(",", "\u2009")
+    sign = CURRENCY_SIGNS.get(currency or "RUB", currency or "")
+
+    return f"{grouped}\u00a0{sign}".strip()
 
 
 def _client_clock(value) -> datetime | None:

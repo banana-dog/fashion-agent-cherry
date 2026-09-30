@@ -1,3 +1,4 @@
+import operator
 from typing import Annotated, Literal, TypedDict
 
 from langchain_core.messages import AnyMessage
@@ -49,7 +50,13 @@ class FashionState(TypedDict):
     retrieved_trends: list[dict]
     resolved_style: dict | None
     search_plan: list[dict]
-    search_reports: list[dict]
+    # One search per category, all of them at once. Every node writes its own
+    # report, and a channel that keeps only the last value raises on the second
+    # write in the same step, which is every request with more than one category.
+    search_reports: Annotated[
+        list[dict],
+        operator.add,
+    ]
     products: Annotated[
         list[dict],
         merge_products,
