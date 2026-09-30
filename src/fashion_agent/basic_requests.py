@@ -10,7 +10,7 @@ from fashion_agent.llm import llm
 from fashion_agent.states import FashionState, StylingRequest
 
 QUESTION_MAP = {
-    "occasion": "Куда или для какого сценария собираем образ?",
+    "occasion": "Расскажи, что за повод? Бюджет и город спросим, когда дойдём до вещей.",
     "budget": "Какой максимальный бюджет закладываем на образ?",
     "location": "В какой стране или городе искать вещи?",
 }
@@ -49,16 +49,16 @@ Rules:
 
     request = request_extractor.invoke([prompt, *state["messages"]])
 
+    # Only the occasion stops an outfit from being built. Budget and city used
+    # to be demanded on every message, which is why "привет" was answered with
+    # "1. Какой бюджет? 2. Где искать?" before the client had said a word
+    # about themselves. A stylist proposes a budget later and assumes a city;
+    # neither is worth interrupting a first conversation for, and the search
+    # code already treats a missing cap as no cap.
     missing_fields = []
 
     if request.task == "build_outfit" and request.occasion is None:  # type: ignore
         missing_fields.append("occasion")
-
-    if request.budget_max is None:  # type: ignore
-        missing_fields.append("budget")
-
-    if request.location is None:  # type: ignore
-        missing_fields.append("location")
 
     return {
         "request": request.model_dump(),  # type: ignore
@@ -69,9 +69,16 @@ Rules:
 def route_after_extraction(
     state: FashionState,
 ) -> Literal[
+    "talk",
     "ask_questions",
     "check_context",
 ]:
+    # Only "unknown" means there is no request to act on: a greeting, or a mood
+    # with no task in it. find_item and style_item are work, and sending those
+    # to chat would answer "найди куртку" with a question about the occasion.
+    if state["request"].get("task") == "unknown":  # type: ignore
+        return "talk"
+
     if state["missing_fields"]:
         return "ask_questions"
 
@@ -79,16 +86,50 @@ def route_after_extraction(
 
 
 def ask_questions(state: FashionState):
-    missing = state["missing_fields"][:2]
+    """One question, asked in words rather than as a numbered form.
 
-    questions = [QUESTION_MAP[field] for field in missing]
+    A client who asked for an outfit and has not said where to is a client
+    worth one question. A second one on top of it, about money, is an
+    interrogation, and the budget comes up anyway as soon as there are clothes
+    on the table.
+    """
+    return {
+        "messages": [
+            AIMessage(content=QUESTION_MAP[state["missing_fields"][0]]),
+        ],
+    }
 
-    text = "Мне нужно уточнить пару вещей:\n"
 
-    for i, question in enumerate(questions, start=1):
-        text += f"\n{i}. {question}"
+TALK_PROMPT = """You are Cherry, a personal stylist talking to a client in a chat.
 
-    return {"messages": [AIMessage(content=text)]}
+The client has said hello, or described how they feel or the vibe they want,
+but has not asked for an outfit yet. Your job is the conversation, not the
+search.
+
+How to reply:
+- Answer in Russian, in a few short sentences, like a person rather than a form.
+- React to what they actually said. If they named a mood, a word or an occasion,
+  hold on to that and use it back. "Слейный вайб" is real information: build on it
+  instead of starting from zero.
+- Ask at most one question, and make it about the occasion or the style. A stylist
+  wants to know where the clothes are going before how much they cost.
+- Do not open with a numbered list and do not ask for a budget and a city.
+- Do not invent preferences, an occasion or a budget. Ask instead.
+- If they have already said what they want, move towards it: offer to put
+  something together, or ask the single most useful next thing.
+"""
+
+
+def talk(state: FashionState):
+    """Small talk that leads somewhere.
+
+    This is where a client says "хочу слейный вайб" and the conversation moves
+    towards what they are dressing for. Asking for a budget and a country first
+    reads as a form to fill in, and loses the mood they arrived with.
+    """
+    reply = llm.invoke([SystemMessage(content=TALK_PROMPT), *state["messages"]])
+
+    return {"messages": [AIMessage(content=str(reply.content))]}
 
 
 def format_style_profile(

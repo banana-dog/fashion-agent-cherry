@@ -9,6 +9,7 @@ from fashion_agent.basic_requests import (
     ask_questions,
     extract_request,
     route_after_extraction,
+    talk,
 )
 from fashion_agent.knowledge.nodes import (
     interpret_style,
@@ -45,6 +46,8 @@ builder = StateGraph(FashionState)
 builder.add_node("extract_request", extract_request)
 
 builder.add_node("ask_questions", ask_questions)
+
+builder.add_node("talk", talk)
 
 builder.add_node(
     "load_style_memory",
@@ -119,6 +122,8 @@ builder.add_conditional_edges(
 )
 
 builder.add_edge("ask_questions", END)
+
+builder.add_edge("talk", END)
 
 # Outside knowledge is gathered before the outfit is planned, so a forecast can
 # change what gets searched for.

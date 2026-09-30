@@ -307,14 +307,36 @@ def test_formula_score_and_trend_score():
 
 
 def test_graph_routing_and_mermaid():
-    assert route_after_extraction({"missing_fields": ["budget"]}) == "ask_questions"
-    assert route_after_extraction({"missing_fields": []}) == "check_context"
+    # Budget and location no longer stop anything: a client is not asked for
+    # money and a city before saying what they want. Only a missing occasion
+    # asks a question, and only a message with no task at all is small talk.
+    outfit = {"request": {"task": "build_outfit", "occasion": "деловая встреча"}}
+    assert route_after_extraction({**outfit, "missing_fields": []}) == "check_context"
+    assert route_after_extraction(
+        {
+            "request": {"task": "build_outfit", "occasion": None},
+            "missing_fields": ["occasion"],
+        }
+    ) == "ask_questions"
+    assert route_after_extraction(
+        {
+            "request": {"task": "unknown", "occasion": None},
+            "missing_fields": [],
+        }
+    ) == "talk"
+    assert route_after_extraction(
+        {
+            "request": {"task": "find_item", "occasion": None},
+            "missing_fields": [],
+        }
+    ) == "check_context"
 
     mermaid = graph.get_graph().draw_mermaid()
     assert "check_context" in mermaid
     assert "retrieve_style_knowledge" in mermaid
     assert "interpret_style" in mermaid
     assert "create_search_plan" in mermaid
+    assert "talk" in mermaid
 
 
 def test_rank_products_and_parallel_search_regression():
