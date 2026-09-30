@@ -163,16 +163,40 @@ def category_label(
     )
 
 
+CATEGORY_NOUNS = {
+    "color": "цвет",
+    "silhouette": "силуэт",
+    "fit": "посадка",
+    "material": "материал",
+    "pattern": "принт",
+    "detail": "детали",
+    "item": "предмет",
+    "style": "стиль",
+}
+
+
 def attribute_label(
     attribute: str,
 ) -> str:
-    return ATTRIBUTE_LABELS.get(
-        attribute,
-        attribute.split(
-            ":",
-            maxsplit=1,
-        )[-1].replace("_", " "),
-    )
+    """A sign, as a person reads it.
+
+    The model writes new signs when it needs one and there is no word for it in
+    the table. Falling back to the raw slug puts "closed-toe" into a Russian
+    sentence, so an unknown sign is named by what kind of thing it is instead.
+    Losing the detail is better than losing the sentence.
+    """
+    known = ATTRIBUTE_LABELS.get(attribute)
+
+    if known:
+        return known
+
+    category, _, target = attribute.partition(":")
+
+    if any(character.isalpha() and ord(character) < 0x400 for character in target):
+        # A slug with Latin letters in it: not a word anybody can read here.
+        return CATEGORY_NOUNS.get(category, "признак")
+
+    return target.replace("_", " ") or CATEGORY_NOUNS.get(category, "признак")
 
 
 def format_money(

@@ -193,6 +193,21 @@ def failure_messages(
     return ["• Не удалось определить точную причину сборки образа."]
 
 
+def _unique(values) -> list[str]:
+    """In order, without repeats.
+
+    Several invented signs can collapse onto one word, and "посадка, посадка,
+    посадка" is not a description of anything.
+    """
+    seen: list[str] = []
+
+    for value in values:
+        if value not in seen:
+            seen.append(value)
+
+    return seen
+
+
 def format_constraints_block(
     diagnostics: AssemblyDiagnostics,
 ) -> list[str]:
@@ -231,7 +246,7 @@ def format_constraints_block(
     if desired_attributes:
         lines.append(
             "• Желаемый стиль: "
-            + ", ".join(attribute_label(attribute) for attribute in desired_attributes)
+            + ", ".join(_unique(attribute_label(a) for a in desired_attributes))
         )
 
     hard_dislikes = diagnostics.get(
@@ -241,7 +256,7 @@ def format_constraints_block(
     if hard_dislikes:
         lines.append(
             "• Исключаю по Style DNA: "
-            + ", ".join(attribute_label(attribute) for attribute in hard_dislikes)
+            + ", ".join(_unique(attribute_label(a) for a in hard_dislikes))
         )
 
     return lines

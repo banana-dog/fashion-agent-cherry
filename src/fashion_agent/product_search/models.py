@@ -30,7 +30,16 @@ class ProductSearch(BaseModel):
         )
     )
 
-    desired_attributes: list[str] = Field(default_factory=list)
+    desired_attributes: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Signs wanted for the item, as category:target. "
+            "Use only these categories: color, silhouette, fit, material, "
+            "pattern, detail, item, style. Prefer words that already appear in "
+            "the collection over inventing a new one: a sign nobody else uses "
+            "matches nothing."
+        ),
+    )
 
     keywords: list[str] = Field(
         default_factory=list,
