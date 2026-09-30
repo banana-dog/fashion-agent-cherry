@@ -6,7 +6,6 @@ from langgraph.graph import (
 )
 
 from fashion_agent.basic_requests import (
-    ask_questions,
     extract_request,
     route_after_extraction,
     talk,
@@ -44,8 +43,6 @@ builder = StateGraph(FashionState)
 ############NODES##############
 
 builder.add_node("extract_request", extract_request)
-
-builder.add_node("ask_questions", ask_questions)
 
 builder.add_node("talk", talk)
 
@@ -120,8 +117,6 @@ builder.add_conditional_edges(
     "extract_request",
     route_after_extraction,
 )
-
-builder.add_edge("ask_questions", END)
 
 builder.add_edge("talk", END)
 

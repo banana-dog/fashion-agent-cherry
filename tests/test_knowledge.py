@@ -312,12 +312,15 @@ def test_graph_routing_and_mermaid():
     # asks a question, and only a message with no task at all is small talk.
     outfit = {"request": {"task": "build_outfit", "occasion": "деловая встреча"}}
     assert route_after_extraction({**outfit, "missing_fields": []}) == "check_context"
+    # An outfit request with no occasion goes to the conversation, not to a
+    # fixed question: the stylist has just been told "хочется слейный вайб" and
+    # a template cannot answer that.
     assert route_after_extraction(
         {
             "request": {"task": "build_outfit", "occasion": None},
             "missing_fields": ["occasion"],
         }
-    ) == "ask_questions"
+    ) == "talk"
     assert route_after_extraction(
         {
             "request": {"task": "unknown", "occasion": None},
@@ -337,6 +340,7 @@ def test_graph_routing_and_mermaid():
     assert "interpret_style" in mermaid
     assert "create_search_plan" in mermaid
     assert "talk" in mermaid
+    assert "ask_questions" not in mermaid
 
 
 def test_rank_products_and_parallel_search_regression():

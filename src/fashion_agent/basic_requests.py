@@ -70,41 +70,24 @@ def route_after_extraction(
     state: FashionState,
 ) -> Literal[
     "talk",
-    "ask_questions",
     "check_context",
 ]:
-    # Only "unknown" means there is no request to act on: a greeting, or a mood
-    # with no task in it. find_item and style_item are work, and sending those
-    # to chat would answer "найди куртку" with a question about the occasion.
-    if state["request"].get("task") == "unknown":  # type: ignore
+    # An outfit request with no occasion still has nothing to search for, and a
+    # message with no task at all has nothing to search for either. Both belong
+    # to the conversation: the occasion is the one thing worth asking for, and a
+    # stylist who has just heard "хочется слейный вайб" asks it by talking, not
+    # from a list. find_item and style_item are work and go straight through.
+    if state["missing_fields"] or state["request"].get("task") == "unknown":  # type: ignore
         return "talk"
-
-    if state["missing_fields"]:
-        return "ask_questions"
 
     return "check_context"
 
 
-def ask_questions(state: FashionState):
-    """One question, asked in words rather than as a numbered form.
-
-    A client who asked for an outfit and has not said where to is a client
-    worth one question. A second one on top of it, about money, is an
-    interrogation, and the budget comes up anyway as soon as there are clothes
-    on the table.
-    """
-    return {
-        "messages": [
-            AIMessage(content=QUESTION_MAP[state["missing_fields"][0]]),
-        ],
-    }
-
-
 TALK_PROMPT = """You are Cherry, a personal stylist talking to a client in a chat.
 
-The client has said hello, or described how they feel or the vibe they want,
-but has not asked for an outfit yet. Your job is the conversation, not the
-search.
+The client has said hello, described how they feel or the vibe they want, or
+asked for an outfit without saying where they are going. Your job right now is
+the conversation, not the search.
 
 How to reply:
 - Answer in Russian, in a few short sentences, like a person rather than a form.
@@ -112,7 +95,9 @@ How to reply:
   hold on to that and use it back. "Слейный вайб" is real information: build on it
   instead of starting from zero.
 - Ask at most one question, and make it about the occasion or the style. A stylist
-  wants to know where the clothes are going before how much they cost.
+  wants to know where the clothes are going before how much they cost. If they
+  asked for an outfit and have not said where to, that question is the occasion,
+  and it is the only one worth asking right now.
 - Do not open with a numbered list and do not ask for a budget and a city.
 - Do not invent preferences, an occasion or a budget. Ask instead.
 - If they have already said what they want, move towards it: offer to put
