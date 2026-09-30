@@ -102,18 +102,25 @@ MARK = r"(?:\u20bd|руб(?:\.|лей)?|€|\$|£)"
 SEPARATOR = r"(?:^|[\s\u00a0\u20bd€$£])"
 MARK_AFTER_SPACE = r"[\s\u00a0]+(" + MARK + r")"
 
+# Ozon writes "1.999 ₽" with a dot for thousands, Wildberries writes "1 999 ₽"
+# with a space, and both write "1.999,50 ₽" for kopecks. Accepting only the
+# space form made every Ozon price unreadable: detect_currency still saw the
+# mark, so those items were rejected as no_price rather than as a parse failure.
+# A dot is only a thousands separator when exactly three digits follow it.
+GROUPED = r"\d{1,3}(?:[.\s\u00a0]\d{3})+(?:,\d{2})?"
+PLAIN = r"\d+(?:[.,]\d{2})?"
+AMOUNT = r"(?:" + GROUPED + r"|" + PLAIN + r")"
+
 PRICE_RE = re.compile(
-    SEPARATOR
-    + r"(\d{1,3}(?:[\s\u00a0]\d{3})+(?:[.,]\d{2})?|\d+(?:[.,]\d{2})?)"
-    + MARK_AFTER_SPACE,
+    SEPARATOR + r"(" + AMOUNT + r")" + MARK_AFTER_SPACE,
     re.IGNORECASE,
 )
 # Marketplaces write the mark first as often as they write it last.
 PRICE_PREFIXED_RE = re.compile(
-    r"(" + MARK + r")\s*"
-    r"(\d{1,3}(?:[\s\u00a0]\d{3})+(?:[.,]\d{2})?|\d+(?:[.,]\d{2})?)(?![\d,])",
+    r"(" + MARK + r")\s*(" + AMOUNT + r")(?![\d,])",
     re.IGNORECASE,
 )
+
 DISCOUNT_RE = re.compile(r"[-−–]\s*(\d{1,3})\s*%")
 RATING_RE = re.compile(
     r"(?<![\d,])(\d[.,]\d)\s*(?:/5)?\s*(\d[\d\s\u00a0]*)?\s*"
@@ -164,9 +171,7 @@ def parse_prices(
     if not matches:
         prefixed = PRICE_PREFIXED_RE.findall(text)
 
-        matches = [
-            (amount, mark) for mark, amount in prefixed
-        ]
+        matches = [(amount, mark) for mark, amount in prefixed]
 
     if not matches:
         return None, None, detect_currency(text)
@@ -181,7 +186,30 @@ def parse_prices(
 
 
 def _to_number(raw: str) -> int:
-    cleaned = raw.replace(" ", "").replace("\u00a0", "").replace(",", ".")
+    """Read an amount the way the shop wrote it.
+
+    "1.999" is one thousand nine hundred and ninety-nine, not one point nine
+    nine. A dot is only a thousands separator when three digits follow it,
+    because "1.999,50" and "1.999" both have to survive and "12.50" must not.
+    """
+    cleaned = raw.replace(" ", "").replace("\u00a0", "")
+
+    if "," in cleaned and "." in cleaned:
+        # Both present: the rightmost one separates the decimals.
+        decimal = "," if cleaned.rfind(",") > cleaned.rfind(".") else "."
+        grouping = "." if decimal == "," else ","
+        cleaned = cleaned.replace(grouping, "").replace(decimal, ".")
+    elif "," in cleaned:
+        head, _, tail = cleaned.partition(",")
+
+        cleaned = f"{head}.{tail}" if len(tail) == 2 else cleaned.replace(",", "")
+    elif "." in cleaned:
+        head, _, tail = cleaned.partition(".")
+
+        if len(tail) == 3 and head.isdigit():
+            cleaned = f"{head}{tail}"
+        elif len(tail) != 2:
+            cleaned = cleaned.replace(".", "")
 
     return round(float(cleaned))
 
@@ -278,6 +306,18 @@ def parse_trusted_price(
     Accepts "от 1 500 ₽" and a discount line such as "2 201 ₽ 5 500 ₽ −60%",
     which is what shops actually write. A bare number with a currency mark is
     ignored because article numbers look the same.
+
+    Both notations count, as in "₽ 2 201 ₽ 5 500 −60%": the mark-first form was
+    defined but only ever read by the lenient parser, which nothing calls, so
+    half the marketplace's discount lines looked like snippets without a price.
+
+    Both are read and merged by position rather than one after the other,
+    because one discount line mixes them. Reading the suffix form alone stops
+    after the first price in "₽ 2 201 ₽ 5 500", and a discount needs a pair.
+
+    A price found by both patterns is one price, not two, so overlaps are
+    dropped: counting "2 201" twice leaves two equal numbers, and a discount
+    needs two different ones.
     """
     if not text:
         return None, None
@@ -287,7 +327,25 @@ def parse_trusted_price(
     if hint and (hint.group("pre") or hint.group("post")):
         return _to_number(hint.group("amount")), None
 
-    amounts = [_to_number(amount) for amount, _ in PRICE_RE.findall(text)]
+    spans: list[tuple[int, int, int]] = [
+        (match.start(1), match.end(1), _to_number(match.group(1)))
+        for match in PRICE_RE.finditer(text)
+    ]
+
+    spans += [
+        (match.start(2), match.end(2), _to_number(match.group(2)))
+        for match in PRICE_PREFIXED_RE.finditer(text)
+    ]
+
+    amounts: list[int] = []
+    taken: list[tuple[int, int]] = []
+
+    for start, end, amount in sorted(spans):
+        if any(start < kept_end and kept_start < end for kept_start, kept_end in taken):
+            continue
+
+        taken.append((start, end))
+        amounts.append(amount)
 
     if len(amounts) < 2:
         return None, None

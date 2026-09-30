@@ -162,3 +162,29 @@ def test_strict_parsers_never_reject_on_unreadable_data(snippet):
     assert matches_size(product["sizes"], "44") is True
     assert product["price"] in (None, 0) or product["price"] > 100
     assert SerpApiWebSource is not None
+
+
+def test_ozon_dot_thousands_price_is_read():
+    # Ozon writes "1.999 ₽" with a dot. Only the space form was readable, so
+    # these items were dropped as no_price while their currency was detected
+    # perfectly well.
+    assert parse_trusted_price("Платье 1.999 ₽ 3.499 ₽ −50%") == (1999, 3499)
+
+
+def test_mark_before_the_number_is_read():
+    # PRICE_PREFIXED_RE existed but only the lenient parser used it, and
+    # nothing calls that one.
+    assert parse_trusted_price("₽ 2 201 ₽ 5 500 −60% скидка") == (2201, 5500)
+
+
+def test_one_price_found_twice_is_still_one_price():
+    # "2 201" matches both the mark-first and the mark-last pattern. Counting it
+    # twice leaves two equal numbers, which no discount line ever has.
+    assert parse_trusted_price("₽ 2 201 5 500 ₽ −60%") == (2201, 5500)
+
+
+def test_dot_is_not_always_a_thousands_separator():
+    # A single price is still untrusted, and a dot with two digits is decimals,
+    # which the hint form reads as 12 units rather than 12.5.
+    assert parse_trusted_price("Свитер 2 201 ₽") == (None, None)
+    assert parse_trusted_price("Цена 12.50 ₽") == (12, None)
