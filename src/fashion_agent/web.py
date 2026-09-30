@@ -52,85 +52,166 @@ HTML_PAGE = """<!doctype html>
     <title>Cherry Pick</title>
     <style>
       :root {
-        --bg: #f6efe5;
-        --paper: #fffaf3;
-        --ink: #22181a;
-        --muted: #6f5b5e;
-        --accent: #b4334f;
-        --accent-2: #e8b46b;
-        --line: rgba(34, 24, 26, 0.12);
-        --shadow: 0 18px 50px rgba(76, 28, 35, 0.12);
+        --bg: #f6f4f1;
+        --surface: #ffffff;
+        --surface-2: #fbfaf8;
+        --ink: #1f1b19;
+        --muted: #6f645e;
+        --faint: #9a8f89;
+        --line: #e7e1db;
+        --accent: #9d2f45;
+        --accent-soft: #fbeff2;
+        --good: #2f6f52;
+        --bad: #a93b3b;
+        --radius: 14px;
+        --shadow: 0 1px 2px rgba(31, 27, 25, 0.04), 0 8px 24px rgba(31, 27, 25, 0.05);
       }
 
       * {
         box-sizing: border-box;
       }
 
+      /* The attribute has to win. A class that sets `display` beats the user
+         agent's [hidden] rule, and an element meant to be invisible was left
+         sitting in the layout taking up a full row of it. */
+      [hidden] {
+        display: none !important;
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
       body {
         margin: 0;
-        min-height: 100vh;
-        font-family: Georgia, "Times New Roman", serif;
+        background: var(--bg);
         color: var(--ink);
-        background:
-          radial-gradient(circle at top left, rgba(180, 51, 79, 0.12), transparent 32%),
-          radial-gradient(circle at bottom right, rgba(232, 180, 107, 0.18), transparent 28%),
-          linear-gradient(135deg, #f8f2ea 0%, #f2e6db 100%);
+        font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
       }
 
       .shell {
-        width: min(1200px, calc(100vw - 32px));
-        margin: 24px auto;
+        height: 100dvh;
         display: grid;
-        grid-template-columns: 320px 1fr;
-        gap: 20px;
+        grid-template-columns: 272px minmax(0, 1fr);
+        /* One row, sized to the viewport. Without the explicit row the grid
+           grows to its tallest child and the composer slides off the bottom. */
+        grid-template-rows: minmax(0, 100%);
+        gap: 0;
       }
 
-      .panel,
-      .chat {
-        background: rgba(255, 250, 243, 0.9);
-        border: 1px solid var(--line);
-        border-radius: 28px;
-        box-shadow: var(--shadow);
-        backdrop-filter: blur(14px);
-      }
-
+      /* Rail: identity and navigation only. Anything a client has to think about
+         belongs in the conversation, not in a sidebar. */
       .panel {
-        padding: 24px;
-        position: sticky;
-        top: 24px;
-        height: fit-content;
+        border-right: 1px solid var(--line);
+        background: var(--surface-2);
+        padding: 22px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+        overflow-y: auto;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+      }
+
+      .brand-mark {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #fff;
+        display: grid;
+        place-items: center;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .brand-name {
+        font-size: 16px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
       }
 
       .eyebrow {
-        margin: 0 0 12px;
-        color: var(--accent);
-        text-transform: uppercase;
-        letter-spacing: 0.16em;
-        font-size: 12px;
-      }
-
-      h1 {
         margin: 0;
-        font-size: clamp(34px, 5vw, 52px);
-        line-height: 0.96;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--faint);
       }
 
-      .lede {
-        margin: 16px 0 0;
-        color: var(--muted);
-        line-height: 1.5;
-        font-size: 16px;
+      .section {
+        display: grid;
+        gap: 10px;
+      }
+
+      .section > .eyebrow {
+        margin-bottom: -2px;
+      }
+
+      .account {
+        display: grid;
+        gap: 8px;
+        gap: 8px;
+      }
+
+      .account-name {
+        font-weight: 600;
+        white-space: nowrap;
+        flex: 0 0 auto;
+      }
+
+      .account-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .nav {
+        display: grid;
+        gap: 2px;
+      }
+
+      .nav a {
+        display: block;
+        padding: 7px 9px;
+        border-radius: 9px;
+        color: var(--ink);
+        text-decoration: none;
+        font-size: 14px;
+      }
+
+      .nav a:hover {
+        background: var(--surface);
       }
 
       .settings {
-        margin-top: 28px;
         display: grid;
-        gap: 14px;
+        gap: 10px;
+      }
+
+      .field {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .field select {
+        width: auto;
+        min-width: 92px;
       }
 
       label {
-        display: grid;
-        gap: 6px;
         font-size: 14px;
         color: var(--muted);
       }
@@ -140,254 +221,122 @@ HTML_PAGE = """<!doctype html>
       button,
       textarea {
         font: inherit;
+        color: inherit;
       }
 
       input,
       select,
       textarea {
         width: 100%;
-        border: 1px solid rgba(34, 24, 26, 0.14);
-        border-radius: 18px;
-        padding: 12px 14px;
-        background: #fffdf8;
-        color: var(--ink);
-      }
-
-      .panel-actions {
-        margin-top: 18px;
-        display: grid;
-        gap: 10px;
-      }
-
-      .secondary {
-        background: transparent;
         border: 1px solid var(--line);
-        color: var(--ink);
+        border-radius: 10px;
+        padding: 9px 11px;
+        background: var(--surface);
+      }
+
+      input:focus-visible,
+      select:focus-visible,
+      textarea:focus-visible,
+      button:focus-visible,
+      a:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
       }
 
       button {
         cursor: pointer;
-        border: 0;
-        border-radius: 18px;
-        padding: 12px 16px;
-        background: linear-gradient(135deg, var(--accent), #d0544d);
-        color: white;
-        transition: transform 120ms ease, opacity 120ms ease;
+        border: 1px solid transparent;
+        border-radius: 10px;
+        padding: 9px 15px;
+        background: var(--accent);
+        color: #fff;
+        font-size: 14px;
+        font-weight: 500;
+        transition: background 120ms ease;
       }
 
-      button:hover {
-        transform: translateY(-1px);
+      button:hover:not(:disabled) {
+        background: #87283c;
       }
 
       button:disabled {
-        opacity: 0.6;
-        cursor: wait;
-        transform: none;
+        opacity: 0.55;
+        cursor: default;
       }
 
-      .chat {
-        min-height: calc(100vh - 48px);
-        display: grid;
-        grid-template-rows: auto 1fr auto auto;
-        overflow: hidden;
+      .secondary {
+        background: var(--surface);
+        border-color: var(--line);
+        color: var(--ink);
       }
 
-      .wardrobe {
-        padding: 12px 28px;
-        border-top: 1px solid var(--line);
-        background: var(--panel);
-        max-height: 34vh;
-        overflow-y: auto;
+      .secondary:hover:not(:disabled) {
+        background: var(--surface-2);
+        border-color: #d9d1ca;
       }
 
-      .wardrobe-head {
-        display: flex;
-        align-items: baseline;
-        gap: 12px;
-      }
-
-      .wardrobe-head h3 {
-        margin: 0;
-        font-size: 15px;
-      }
-
-      .wardrobe-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin: 10px 0;
-      }
-
-      .wardrobe-card {
-        position: relative;
-        width: 108px;
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        overflow: hidden;
-        background: var(--bg);
-      }
-
-      .wardrobe-card img {
-        width: 100%;
-        height: 118px;
-        object-fit: cover;
-        display: block;
-      }
-
-      .wardrobe-card .name {
-        font-size: 11px;
-        line-height: 1.3;
-        padding: 6px;
-      }
-
-      .wardrobe-card .tags {
-        font-size: 10px;
-        color: var(--muted);
-        padding: 0 6px 6px;
-      }
-
-      .wardrobe-card .drop {
-        position: absolute;
-        top: 4px;
-        right: 4px;
-        background: rgba(0, 0, 0, 0.55);
-        color: #fff;
+      .quiet {
+        background: transparent;
         border: 0;
-        border-radius: 50%;
-        width: 22px;
-        height: 22px;
-        padding: 0;
-        font-size: 13px;
-        line-height: 1;
-      }
-
-      .wardrobe-card.unconfirmed {
-        border-color: var(--accent);
-      }
-
-      .account { display: flex; align-items: center; gap: 8px; }
-      .account-name { font-weight: 600; }
-      .look-session {
-        margin-bottom: 10px;
-        padding: 10px;
-        border: 1px solid var(--line);
-        border-radius: 12px;
-      }
-
-      .look-session h4 {
-        margin: 0 0 6px;
-        font-size: 14px;
-      }
-
-      .look-change {
-        display: flex;
-        gap: 8px;
-        align-items: baseline;
-        margin: 4px 0;
+        color: var(--muted);
+        padding: 4px 6px;
         font-size: 13px;
       }
 
-      .look-change label {
-        display: flex;
-        gap: 6px;
-        align-items: baseline;
-        cursor: pointer;
+      .quiet:hover:not(:disabled) {
+        background: transparent;
+        color: var(--accent);
       }
 
-      .look-diff {
-        font-size: 13px;
-        margin-top: 6px;
-      }
-
-      .look-diff .up {
-        color: #2f7a4f;
-      }
-
-      .look-diff .down {
-        color: #b64b4b;
-      }
-
-      .look-actions {
-        display: flex;
+      .panel-actions {
+        margin-top: auto;
+        display: grid;
         gap: 8px;
-        margin-top: 8px;
-        flex-wrap: wrap;
-      }
-
-      .wardrobe-references {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        margin-bottom: 6px;
-      }
-
-      .wardrobe-references img {
-        width: 54px;
-        height: 54px;
-        object-fit: cover;
-        border-radius: 8px;
-        border: 2px solid transparent;
-      }
-
-      .wardrobe-references img.disliked {
-        border-color: #b64b4b;
-      }
-
-      .wardrobe-references img.liked {
-        border-color: var(--accent);
-      }
-
-      .wardrobe-reference-actions {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        margin-bottom: 8px;
-      }
-
-      .wardrobe-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        align-items: center;
       }
 
       .file-button {
         display: inline-block;
-        border-radius: 18px;
-        padding: 10px 16px;
-        background: linear-gradient(135deg, var(--accent), #d0544d);
-        color: #fff;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 8px 13px;
+        background: var(--surface);
+        color: var(--ink);
+        font-size: 14px;
         cursor: pointer;
       }
 
+      .file-button:hover {
+        background: var(--surface-2);
+      }
+
+      /* Conversation */
+
+      .chat {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto auto;
+        min-width: 0;
+        min-height: 0;
+        background: var(--surface);
+      }
+
       .chat-header {
-        padding: 24px 28px 18px;
+        padding: 14px 28px;
         border-bottom: 1px solid var(--line);
         display: flex;
-        align-items: end;
+        align-items: center;
         justify-content: space-between;
         gap: 16px;
       }
 
-      .chat-header h2 {
-        margin: 0;
-        font-size: 24px;
-      }
-
-      .chat-header p {
-        margin: 6px 0 0;
-        color: var(--muted);
-      }
-
       .status {
         color: var(--muted);
-        font-size: 14px;
+        font-size: 13px;
         white-space: nowrap;
       }
 
       .messages {
         padding: 24px 28px;
-        overflow: auto;
+        overflow-y: auto;
         display: grid;
         gap: 14px;
         align-content: start;
@@ -395,42 +344,87 @@ HTML_PAGE = """<!doctype html>
 
       .message {
         max-width: min(720px, 100%);
-        padding: 16px 18px;
-        border-radius: 22px;
-        line-height: 1.55;
-        white-space: pre-wrap;
-        animation: rise 180ms ease;
+        padding: 13px 16px;
+        border-radius: var(--radius);
+        line-height: 1.6;
+        /* Not pre-wrap: it would be inherited by every card and collage built
+           inside the message, and each newline of their markup would become a
+           visible line break. Line breaks in the reply itself are already
+           inserted as <br>. */
+        white-space: normal;
+        animation: rise 160ms ease;
       }
 
       .message.user {
         margin-left: auto;
-        background: linear-gradient(135deg, #38252f, #5a2b35);
-        color: #fff7f0;
+        background: var(--ink);
+        color: #fdfaf7;
       }
 
       .message.assistant {
-        background: #fffdf9;
-        border: 1px solid rgba(34, 24, 26, 0.08);
+        background: var(--surface-2);
+        border: 1px solid var(--line);
       }
+
+      .message.taste-profile {
+        border-left: 3px solid var(--accent);
+      }
+
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Outfits */
 
       .outfit-list {
         margin-top: 18px;
         display: grid;
-        gap: 18px;
+        gap: 16px;
       }
 
       .outfit-card {
-        padding-top: 16px;
+        padding-top: 14px;
         border-top: 1px solid var(--line);
       }
 
-      .collage-waiting { color: var(--muted); font-size: 13px; margin: 0; padding: 12px 0; }
+      .outfit-meta strong {
+        display: block;
+        font-size: 17px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+
+      .outfit-meta p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .outfit-composition {
+        margin: 4px 0 0;
+        font-size: 13px;
+        color: var(--accent);
+      }
+
+      .collage-waiting {
+        margin: 10px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
       .outfit-collage {
-        margin-top: 14px;
+        margin-top: 12px;
+        border-radius: var(--radius);
+        border: 1px solid var(--line);
         overflow: hidden;
-        border-radius: 24px;
-        border: 1px solid rgba(34, 24, 26, 0.08);
-        background: linear-gradient(135deg, rgba(180, 51, 79, 0.05), rgba(232, 180, 107, 0.1));
+        background: var(--surface-2);
       }
 
       .outfit-collage img {
@@ -439,33 +433,27 @@ HTML_PAGE = """<!doctype html>
         height: auto;
       }
 
-      .outfit-meta strong {
-        display: block;
-        font-size: 18px;
-      }
-
-      .outfit-meta p {
-        margin: 8px 0 0;
-        color: var(--muted);
-      }
-
       .product-grid {
-        margin-top: 14px;
+        margin-top: 12px;
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 14px;
+        grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+        gap: 12px;
       }
 
       .product-card {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--surface);
         overflow: hidden;
-        border-radius: 22px;
-        background: #fffaf4;
-        border: 1px solid rgba(34, 24, 26, 0.08);
+      }
+
+      .product-card.owned {
+        border-color: var(--accent);
       }
 
       .product-image {
         aspect-ratio: 4 / 5;
-        background: linear-gradient(135deg, rgba(180, 51, 79, 0.08), rgba(232, 180, 107, 0.16));
+        background: var(--surface-2);
       }
 
       .product-image img {
@@ -475,23 +463,20 @@ HTML_PAGE = """<!doctype html>
         object-fit: cover;
       }
 
-      .product-image-fallback {
-        width: 100%;
-        height: 100%;
-        display: grid;
-        place-items: center;
-        color: var(--muted);
-        font-size: 14px;
+      /* No photograph and no label: an empty box is not information, and three
+         of them in a row is the loudest thing on the screen. */
+      .product-image-blank {
+        aspect-ratio: 16 / 9;
       }
 
       .product-copy {
-        padding: 14px;
+        padding: 11px 12px 13px;
       }
 
       .product-title {
         margin: 0;
-        font-size: 16px;
-        line-height: 1.35;
+        font-size: 14px;
+        line-height: 1.4;
       }
 
       .product-title a,
@@ -505,117 +490,456 @@ HTML_PAGE = """<!doctype html>
       }
 
       .product-price {
-        margin: 10px 0 0;
-        font-size: 15px;
-      }
-
-      .outfit-composition {
-        margin: 6px 0 0;
-        font-size: 13px;
-        color: var(--accent);
-      }
-
-      .product-card.owned {
-        border-color: var(--accent);
+        margin: 7px 0 0;
+        font-size: 14px;
+        font-weight: 600;
       }
 
       .product-source {
-        margin: 6px 0 0;
+        margin: 4px 0 0;
         color: var(--muted);
         font-size: 13px;
       }
 
-      .composer {
-        padding: 18px 28px 28px;
+      /* Wardrobe: a strip above the composer, not a wall of controls */
+
+      .wardrobe {
         border-top: 1px solid var(--line);
+        background: var(--surface-2);
+        padding: 12px 28px 14px;
         display: grid;
-        gap: 12px;
+        gap: 10px;
+        max-height: 34vh;
+        overflow-y: auto;
       }
 
-      textarea {
-        min-height: 110px;
-        resize: vertical;
-      }
-
-      .composer-row {
+      .wardrobe-head {
         display: flex;
-        justify-content: space-between;
+        align-items: baseline;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .wardrobe-head h3 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      /* A strip of tools that a person may not need should not cost a third of
+         a phone screen before they have said anything. */
+      .wardrobe.collapsed .wardrobe-body,
+      .wardrobe.collapsed .wardrobe-head .hint {
+        display: none;
+      }
+
+      .wardrobe-head #wardrobeToggle {
+        margin-left: auto;
+        flex: 0 0 auto;
+      }
+
+      .wardrobe-body {
+        display: grid;
+        gap: 10px;
+      }
+
+      .wardrobe-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .wardrobe-card {
+        position: relative;
+        width: 92px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        overflow: hidden;
+        background: var(--surface);
+      }
+
+      .wardrobe-card.unconfirmed {
+        border-color: var(--accent);
+      }
+
+      .wardrobe-card img {
+        width: 100%;
+        height: 100px;
+        object-fit: cover;
+        display: block;
+      }
+
+      .wardrobe-card .name {
+        font-size: 11px;
+        line-height: 1.3;
+        padding: 5px 6px 0;
+      }
+
+      .wardrobe-card .tags {
+        font-size: 10px;
+        color: var(--faint);
+        padding: 0 6px 6px;
+      }
+
+      .wardrobe-card .drop {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: rgba(31, 27, 25, 0.6);
+        color: #fff;
+        border: 0;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        padding: 0;
+        font-size: 12px;
+        line-height: 1;
+      }
+
+      .wardrobe-references {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .wardrobe-references img {
+        width: 48px;
+        height: 48px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 2px solid transparent;
+      }
+
+      .wardrobe-references img.liked {
+        border-color: var(--accent);
+      }
+
+      .wardrobe-references img.disliked {
+        border-color: var(--bad);
+      }
+
+      .wardrobe-reference-actions,
+      .wardrobe-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
         align-items: center;
-        gap: 12px;
+      }
+
+      /* One invitation beside the thing it invites. Two of them stacked at the
+         top of the panel read as one wall of instructions. */
+      .wardrobe-block {
+        display: grid;
+        gap: 7px;
+        padding-top: 10px;
+        border-top: 1px solid var(--line);
+      }
+
+      .wardrobe-reference-actions select,
+      .wardrobe-actions select {
+        width: auto;
+        flex: 0 0 auto;
+      }
+
+      .wardrobe-reference-actions .wardrobe-references {
+        flex: 1 1 120px;
+      }
+
+      .wardrobe-actions input[type=text] {
+        flex: 1 1 200px;
+        min-width: 140px;
+        max-width: 320px;
+      }
+
+      .row-label {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--faint);
+        margin-right: 2px;
       }
 
       .hint {
         color: var(--muted);
         font-size: 13px;
+        margin: 0;
+        line-height: 1.45;
       }
 
-      @keyframes rise {
-        from {
-          opacity: 0;
-          transform: translateY(8px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
+      .wardrobe-head .hint {
+        flex: 1 1 auto;
+        min-width: 0;
       }
 
-      @media (max-width: 960px) {
+      /* Look assessment */
+
+      .look-session {
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--surface);
+        display: grid;
+        gap: 6px;
+      }
+
+      .look-session h4 {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .look-change {
+        display: flex;
+        gap: 8px;
+        align-items: baseline;
+        margin: 2px 0;
+        font-size: 13px;
+      }
+
+      .look-change label {
+        display: flex;
+        gap: 7px;
+        align-items: baseline;
+        color: var(--ink);
+        cursor: pointer;
+      }
+
+      .look-diff {
+        font-size: 13px;
+        margin-top: 4px;
+      }
+
+      .look-diff .up {
+        color: var(--good);
+      }
+
+      .look-diff .down {
+        color: var(--bad);
+      }
+
+      .look-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 6px;
+        flex-wrap: wrap;
+      }
+
+      /* Composer */
+
+      .composer {
+        border-top: 1px solid var(--line);
+        padding: 14px 28px 18px;
+        display: grid;
+        gap: 10px;
+        background: var(--surface);
+      }
+
+      textarea {
+        min-height: 62px;
+        max-height: 220px;
+        resize: vertical;
+        line-height: 1.55;
+      }
+
+      .composer-row {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        align-items: center;
+      }
+
+      @media (max-width: 980px) {
+        /* The rail becomes a bar above the conversation rather than a column
+           beside it: on a phone a column of navigation is a screen of
+           navigation. Two rows, and nothing that a person needs twice. */
         .shell {
-          grid-template-columns: 1fr;
+          grid-template-columns: minmax(0, 1fr);
+          grid-template-rows: auto minmax(0, 1fr);
+          height: 100dvh;
         }
 
         .panel {
-          position: static;
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+          padding: 10px 16px;
+          display: flex;
+          flex-direction: row;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 6px 12px;
+          overflow: visible;
+        }
+
+        .section {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        /* The labels are for the wide layout, where there is room to orient
+           someone. Here the controls speak for themselves. */
+        .section > .eyebrow {
+          display: none;
+        }
+
+        .account {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .account-buttons {
+          display: flex;
+          gap: 2px;
+        }
+
+        .nav {
+          display: flex;
+          gap: 2px;
+          order: 3;
+        }
+
+        .nav a {
+          padding: 5px 8px;
+          font-size: 13px;
+        }
+
+        .settings {
+          display: flex;
+          gap: 10px;
+          order: 4;
+        }
+
+        .field {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 13px;
+        }
+
+        .field select {
+          min-width: 78px;
+          padding: 6px 8px;
+        }
+
+        .panel-actions {
+          margin-top: 0;
+          margin-left: auto;
+          order: 2;
+        }
+
+        .panel-actions button {
+          padding: 7px 12px;
         }
 
         .chat {
-          min-height: 78vh;
+          min-height: 0;
+        }
+
+        .messages,
+        .composer,
+        .wardrobe,
+        .chat-header {
+          padding-left: 16px;
+          padding-right: 16px;
+        }
+
+        /* The conversation is the point of the page. A strip of wardrobe tools
+           may take a quarter of it, not a third. */
+        .wardrobe {
+          max-height: 26vh;
+        }
+
+        .product-grid {
+          grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        }
+
+        /* Portrait-shaped holes on a narrow screen are mostly scroll. */
+        .product-image {
+          aspect-ratio: 1 / 1;
+        }
+
+        .product-image-blank {
+          aspect-ratio: 16 / 9;
+        }
+
+        .message {
+          max-width: 100%;
         }
       }
+
+      @media (max-width: 560px) {
+        .panel {
+          grid-template-columns: minmax(0, 1fr);
+          justify-items: start;
+        }
+
+        .section,
+        .panel-actions {
+          grid-column: 1;
+        }
+
+        .panel-actions {
+          justify-self: stretch;
+        }
+
+        .panel-actions button {
+          width: 100%;
+        }
+      }
+
     </style>
   </head>
   <body>
     <div class="shell">
       <aside class="panel">
-        <p class="eyebrow">Cherry Pick</p>
-        <h1>Fashion agent<br>для живого диалога</h1>
-        <p class="lede">
-          Интерфейс для текущего LangGraph-агента: один диалог, сохранение контекста
-          по сессии и быстрый сброс разговора без перезапуска сервера.
-        </p>
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">C</span>
+          <span class="brand-name">Cherry</span>
+        </div>
 
-        <div class="settings">
+        <div class="section">
+          <p class="eyebrow">Аккаунт</p>
           <div class="account" id="accountBox">
             <span class="account-name" id="accountName">Гость</span>
-            <button type="button" class="secondary" id="accountOpen">Войти</button>
-            <button type="button" class="secondary" id="accountExport" hidden>Мои данные</button>
-            <button type="button" class="secondary" id="accountForget" hidden>Удалить всё</button>
+            <div class="account-buttons">
+              <button type="button" class="secondary" id="accountOpen">Войти</button>
+              <button type="button" class="quiet" id="accountExport">Мои данные</button>
+              <button type="button" class="quiet" id="accountForget">Удалить</button>
+            </div>
           </div>
-          <label>
-            Locale
-            <select id="locale">
-              <option value="ru-RU">ru-RU</option>
-              <option value="en-US">en-US</option>
-            </select>
-          </label>
-          <label>
-            Currency
-            <select id="currency">
-              <option value="RUB">RUB</option>
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="GBP">GBP</option>
-              <option value="GEL">GEL</option>
-            </select>
-          </label>
+        </div>
+
+        <nav class="nav">
+          <a href="/me">Обо мне</a>
+          <a href="/cards">Коллекция образов</a>
+        </nav>
+
+        <div class="section">
+          <p class="eyebrow">Предпочтения</p>
+          <div class="settings">
+            <div class="field">
+              <span>Язык</span>
+              <select id="locale">
+                <option value="ru-RU">Русский</option>
+                <option value="en-US">English</option>
+              </select>
+            </div>
+            <div class="field">
+              <span>Валюта</span>
+              <select id="currency">
+                <option value="RUB">₽ рубль</option>
+                <option value="USD">$ доллар</option>
+                <option value="EUR">€ евро</option>
+                <option value="GBP">£ фунт</option>
+                <option value="GEL">₾ лари</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <div class="panel-actions">
-          <div style="text-align:center;padding:4px">
-            <a href="/me" style="color:var(--accent);padding:8px">Обо мне</a>
-            <a href="/cards" style="color:var(--accent);padding:8px">Коллекция образов</a>
-          </div>
           <button id="newChatButton" class="secondary" type="button">
             Новый разговор
           </button>
@@ -624,12 +948,8 @@ HTML_PAGE = """<!doctype html>
 
       <main class="chat">
         <header class="chat-header">
-          <div>
-            <p class="eyebrow">Web Console</p>
-            <h2>Спроси Cherry про образ</h2>
-            <p>Бюджет, повод, стиль, dislikes и обязательные вещи можно писать обычным текстом.</p>
-          </div>
-          <div class="status" id="status">Готова к диалогу</div>
+          <p class="eyebrow">Стилист</p>
+          <div class="status" id="status">Готова</div>
         </header>
 
         <section class="messages" id="messages"></section>
@@ -638,28 +958,39 @@ HTML_PAGE = """<!doctype html>
           <div class="wardrobe-head">
             <h3>Мой гардероб</h3>
             <span class="hint" id="wardrobeHint"></span>
+            <button type="button" class="quiet" id="wardrobeToggle">
+              Свернуть
+            </button>
           </div>
+
+          <div class="wardrobe-body">
           <div class="wardrobe-grid" id="wardrobeGrid"></div>
-          <div class="wardrobe-references" id="wardrobeReferences"></div>
           <div class="look-session" id="lookSession" hidden></div>
-          <p class="hint" id="tasteNotes"></p>
-          <div class="wardrobe-reference-actions">
-            <label class="file-button">
-              <input type="file" id="referencePhoto" accept="image/*" hidden>
-              <span>Прислать образец вкуса</span>
-            </label>
-            <select id="referenceLiked">
-              <option value="1">нравится</option>
-              <option value="0">не нравится</option>
-            </select>
+
+          <div class="wardrobe-block">
+            <div class="wardrobe-reference-actions">
+              <span class="row-label">Вкус</span>
+              <label class="file-button">
+                <input type="file" id="referencePhoto" accept="image/*" hidden>
+                <span>Прислать фото</span>
+              </label>
+              <select id="referenceLiked">
+                <option value="1">нравится</option>
+                <option value="0">не нравится</option>
+              </select>
+            </div>
+            <div class="wardrobe-references" id="wardrobeReferences"></div>
+            <p class="hint" id="tasteNotes"></p>
           </div>
+
           <form class="wardrobe-actions" id="wardrobeForm">
+            <span class="row-label">Вещь</span>
             <label class="file-button">
               <input type="file" id="wardrobePhoto" accept="image/*" hidden>
-              <span>Добавить вещь</span>
+              <span>Выбрать фото</span>
             </label>
             <select id="wardrobeCategory">
-              <option value="unknown">что за вещь — не знаю</option>
+              <option value="unknown">не разобралась</option>
               <option value="top">верх</option>
               <option value="bottom">низ</option>
               <option value="dress">платье</option>
@@ -668,23 +999,24 @@ HTML_PAGE = """<!doctype html>
               <option value="bag">сумка</option>
               <option value="accessory">аксессуар</option>
             </select>
-            <input type="text" id="wardrobeNote" placeholder="заметка, например «кремовый кашемир»">
-            <button type="submit" class="secondary">Загрузить</button>
+            <input type="text" id="wardrobeNote" placeholder="например, кремовый кашемир">
+            <button type="submit" class="secondary">Добавить</button>
             <button type="button" class="secondary" id="critiqueButton">
-              Оценить мой образ
+              Оценить образ
             </button>
           </form>
           <input type="file" id="lookPhoto" accept="image/*" hidden>
-      <input type="file" id="lookPhotoAfter" accept="image/*" hidden>
+          <input type="file" id="lookPhotoAfter" accept="image/*" hidden>
+          </div>
         </section>
 
         <form class="composer" id="chatForm">
           <textarea
             id="prompt"
-            placeholder="Например: собери total black образ на концерт, бюджет до 40 000 ₽"
+            rows="2"
+            placeholder="Собери образ на концерт, бюджет до 40 000 ₽"
           ></textarea>
           <div class="composer-row">
-            <div class="hint">Сессия хранит thread_id на сервере, поэтому follow-up работает как в CLI.</div>
             <button id="sendButton" type="submit">Отправить</button>
           </div>
         </form>
@@ -721,8 +1053,13 @@ HTML_PAGE = """<!doctype html>
         messagesNode.scrollTop = messagesNode.scrollHeight;
       }
 
+      const CURRENCY_SIGN = {RUB: "\u20BD", USD: "$", EUR: "\u20AC", GBP: "\u00A3", GEL: "\u20BE"};
+
       function formatPrice(price, currency) {
-        return `${Math.round(price)} ${currency}`;
+        // "9800 RUB" is what an API returns. "9 800 \u20BD" is what a person reads.
+        const rounded = Math.round(Number(price) || 0);
+        const grouped = String(rounded).replace(/\\B(?=(\\d{3})+(?!\\d))/g, "\u2009");
+        return `${grouped} ${CURRENCY_SIGN[currency] || currency || ""}`.trim();
       }
 
       function addAssistantMessage(content, outfits = []) {
@@ -776,9 +1113,14 @@ HTML_PAGE = """<!doctype html>
               const itemNode = document.createElement("article");
               itemNode.className = "product-card" + (isOwned ? " owned" : "");
 
+              // A wardrobe item is something the client owns and has already
+              // seen; reserving a portrait-shaped hole with the words "no photo"
+              // in it says less than saying nothing.
               const imageHtml = item.image_url
-                ? `<img src="${encodeURI(item.image_url)}" alt="${escapeHtml(item.title)}" loading="lazy">`
-                : `<div class="product-image-fallback">Нет фото</div>`;
+                ? `<div class="product-image"><img src="${encodeURI(item.image_url)}" alt="${escapeHtml(item.title)}" loading="lazy"></div>`
+                : isOwned
+                  ? ""
+                  : '<div class="product-image product-image-blank"></div>';
 
               const titleHtml = !isOwned && item.url
                 ? `<a href="${encodeURI(item.url)}" target="_blank" rel="noreferrer">${escapeHtml(item.title)}</a>`
@@ -789,7 +1131,7 @@ HTML_PAGE = """<!doctype html>
                 : `<p class="product-price">${escapeHtml(formatPrice(item.price, item.currency))}</p>`;
 
               itemNode.innerHTML = `
-                <div class="product-image">${imageHtml}</div>
+                ${imageHtml}
                 <div class="product-copy">
                   <h3 class="product-title">${titleHtml}</h3>
                   ${priceHtml}
@@ -851,7 +1193,7 @@ HTML_PAGE = """<!doctype html>
         const forgetting = document.getElementById("accountForget");
         if (data.anonymous) {
           name.textContent = "Гость";
-          button.textContent = "Войти или зарегистрироваться";
+          button.textContent = "Войти";
           exporting.hidden = false;
           forgetting.hidden = true;
         } else {
@@ -1090,6 +1432,16 @@ HTML_PAGE = """<!doctype html>
       const wardrobe = document.getElementById("wardrobe");
       const wardrobeGrid = document.getElementById("wardrobeGrid");
       const wardrobeHint = document.getElementById("wardrobeHint");
+      const wardrobeToggle = document.getElementById("wardrobeToggle");
+
+      function setWardrobeCollapsed(collapsed) {
+        wardrobe.classList.toggle("collapsed", collapsed);
+        wardrobeToggle.textContent = collapsed ? "Открыть" : "Свернуть";
+      }
+
+      wardrobeToggle.addEventListener("click", () => {
+        setWardrobeCollapsed(!wardrobeNode.classList.contains("collapsed"));
+      });
       const wardrobeForm = document.getElementById("wardrobeForm");
       const wardrobePhoto = document.getElementById("wardrobePhoto");
       const wardrobeCategory = document.getElementById("wardrobeCategory");
@@ -1191,7 +1543,7 @@ HTML_PAGE = """<!doctype html>
 
         if (payload.vision_available === false) {
           wardrobeHint.textContent =
-            "Распознавание не настроено: добавьте VISION_API_KEY, иначе вещи придётся заполнять вручную.";
+            "Сервер: не настроено распознавание (VISION_API_KEY) — вещи придётся заполнять вручную.";
         } else {
           const pending = items.filter(item => !item.confirmed).length;
           wardrobeHint.textContent = pending
@@ -1529,6 +1881,14 @@ HTML_PAGE = """<!doctype html>
       // only start if the client happened to type the right word.
       if (typeof initializeTasteConversation === "function") {
         initializeTasteConversation();
+      }
+
+      // On a narrow screen the wardrobe starts closed: it is a set of tools, and
+      // the conversation is what the page is for. The wide layout keeps it open,
+      // because there is room beside it. Written here, after the bindings it
+      // touches, because the script runs top to bottom.
+      if (window.matchMedia("(max-width: 980px)").matches) {
+        setWardrobeCollapsed(true);
       }
     </script>
   </body>

@@ -109,6 +109,80 @@ def _plain(value: str) -> str:
     return value.replace("_", " ")
 
 
+# The attributes are stored as English slugs because the catalogue is. Shown to a
+# person they have to read as Russian, and "цвет: black" does not.
+TARGET_WORDS = {
+    "fit": {
+        "oversize": "свободный",
+        "oversized": "свободный",
+        "slim": "прилегающий",
+        "skinny": "облегающий",
+        "relaxed": "расслабленный",
+        "straight": "прямой",
+        "fitted": "приталенный",
+        "loose": "свободный",
+    },
+    "silhouette": {
+        "midi": "миди",
+        "mini": "мини",
+        "maxi": "макси",
+        "a_line": "А-силуэт",
+        "aline": "А-силуэт",
+        "shift": "шифт",
+        "wrap": "запахивающийся",
+        "pencil": "карандаш",
+    },
+    "material": {
+        "leather": "кожа",
+        "denim": "джинса",
+        "cotton": "хлопок",
+        "linen": "лён",
+        "wool": "шерсть",
+        "cashmere": "кашемир",
+        "silk": "шёлк",
+        "velvet": "бархат",
+        "knit": "трикотаж",
+        "suede": "замша",
+    },
+    "style": {
+        "minimal": "минимализм",
+        "classic": "классика",
+        "sporty": "спортивный",
+        "gothic": "готik",
+        "elegant": "элегантный",
+        "romantic": "романтичный",
+        "boho": "бохо",
+        "business": "деловой",
+        "casual": "повседневный",
+    },
+    "pattern": {
+        "solid": "однотонный",
+        "stripe": "полоска",
+        "print": "принт",
+        "floral": "цветочный",
+        "check": "клетка",
+        "animal_print": "звериный принт",
+    },
+    "detail": {
+        "buttons": "пуговицы",
+        "pockets": "карманы",
+        "belt": "ремень",
+        "hood": "капюшон",
+        "lace": "кружево",
+    },
+}
+
+
+def target_word(category: str, target: str) -> str:
+    """A catalogue slug as something a person reads."""
+    from fashion_agent.product_search.snippets import RUSSIAN_COLOR_WORDS
+
+    if category == "color":
+        return RUSSIAN_COLOR_WORDS.get(target, target)
+
+    return TARGET_WORDS.get(category, {}).get(target, target)
+
+
 def _preference_lines(
     preferences: list[dict],
     limit: int = 12,
@@ -116,9 +190,8 @@ def _preference_lines(
     lines = []
 
     for preference in preferences[:limit]:
-        heading = CATEGORY_HEADINGS.get(
-            preference.get("category", ""), preference.get("category", "")
-        )
+        category = preference.get("category", "")
+        heading = CATEGORY_HEADINGS.get(category, category)
         mark = {"like": "нравится", "dislike": "не нравится"}.get(
             preference.get("polarity", ""), preference.get("polarity", "")
         )
@@ -127,11 +200,19 @@ def _preference_lines(
             "stated": "вы сказали",
             "confirmed": "подтверждено",
         }.get(preference.get("strength", ""), preference.get("strength", ""))
-        lines.append(
-            f"{heading}: {preference.get('target', '')} — {mark} ({strength})"
-        )
+        word = target_word(category, preference.get("target", ""))
+        lines.append(f"{heading}: {word} — {mark} ({strength})")
 
     return lines
+
+
+def money(value: float | None, currency: str = "RUB") -> str:
+    """Money the way it is written, not the way an API returns it."""
+    signs = {"RUB": "\u20bd", "USD": "$", "EUR": "\u20ac", "GBP": "\u00a3", "GEL": "\u20be"}
+    sign = signs.get(currency or "RUB", currency or "")
+    grouped = f"{value:,.0f}".replace(",", "\u2009")
+
+    return f"{grouped} {sign}".strip()
 
 
 @dataclass

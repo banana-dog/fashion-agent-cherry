@@ -199,7 +199,8 @@ class TestInTheCabinet:
         page = cabinet["render"](cabinet["build"](cabinet["user_id"]))
 
         assert "Тренч" in page
-        assert "18900" in page
+        # Written the way a person reads money, not the way an API returns it.
+        assert "18\u2009900" in page and "\u20bd" in page
         # Scoped to the purchase section: the gaps section above it has its own
         # honest "I don't know" lines, which must not confuse the check.
         section = page.split("История покупок", 1)[1].split("</section>", 1)[0]

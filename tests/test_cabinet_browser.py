@@ -194,8 +194,10 @@ class TestPage:
         assert page.locator("img").count() >= 2
 
     def test_an_item_without_a_photo_is_still_shown(self, page):
+        # Listed, and without a portrait-shaped hole where a photograph should
+        # be: the words "no photo" say less than an empty box says nothing.
         assert "Джемпер" in page.inner_text("body")
-        assert page.locator(".no-photo").count() == 1
+        assert page.locator(".no-photo").count() == 0
 
     def test_the_finished_look_shows_the_comparison(self, page):
         text = page.inner_text("body")
@@ -405,8 +407,8 @@ class TestPurchaseFormInBrowser:
 
         text = page.inner_text("body")
 
-        assert "18900" in text
-        assert "Всего: 18900" in text
+        assert "18\u2009900" in text
+        assert "Всего: 18\u2009900" in text
 
     def test_a_second_purchase_adds_to_the_total(self, page):
         for title, price in (("Тренч", "18900"), ("Джемпер", "3100")):
@@ -418,7 +420,7 @@ class TestPurchaseFormInBrowser:
                 arg=title,
             )
 
-        assert "Всего: 22000" in page.inner_text("body")
+        assert "Всего: 22\u2009000" in page.inner_text("body")
 
     def test_a_purchase_without_a_price_is_still_recorded(self, page):
         page.fill('#buyForm input[name=title]', "Джемпер")

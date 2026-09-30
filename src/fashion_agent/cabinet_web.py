@@ -7,7 +7,7 @@ missed, and the client is the only one who can correct it.
 
 import html
 
-from fashion_agent.cabinet import Cabinet
+from fashion_agent.cabinet import Cabinet, money
 
 PAGE_STYLE = """
 <style>
@@ -26,17 +26,17 @@ PAGE_STYLE = """
   li { margin: 3px 0; font-size: 14px; }
   .empty { color: #8a7a74; font-size: 14px; margin: 0; }
   .hint { color: #b0a09a; font-size: 13px; margin: 6px 0 0; font-style: italic; }
-  .block { margin-bottom: 12px; }
+  .block { margin-bottom: 14px; }
+  .block h3 + p, .block h3 + ul { margin-top: 2px; }
   .block:last-child { margin-bottom: 0; }
   .block h3 { font-size: 13px; margin: 0 0 4px; color: #8a7a74; font-weight: 600;
     text-transform: uppercase; letter-spacing: .03em; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px; align-items: start; }
   .card { border: 1px solid #e8ddd8; border-radius: 10px; padding: 8px; font-size: 13px; }
   .card img { width: 100%; aspect-ratio: 3 / 4; object-fit: contain; background: #f6f1ee;
     border-radius: 6px; margin-bottom: 6px; }
-  .no-photo { aspect-ratio: 3 / 4; background: #f6f1ee; border-radius: 6px; margin-bottom: 6px;
-    display: flex; align-items: center; justify-content: center; color: #c0b2ac; font-size: 11px;
-    text-align: center; }
+
   .like { color: #2f7a4f; }
   .dislike { color: #b64b4b; }
   .gap { background: #fff6e9; border-color: #f0dcc0; }
@@ -61,6 +61,17 @@ def _escape(value) -> str:
     return html.escape(str(value))
 
 
+def _plural(count: int, one: str, few: str, many: str) -> str:
+    """Russian counts three ways, and "4 разделов" is how you notice nobody tried."""
+    if count % 10 == 1 and count % 100 != 11:
+        return f"{count} {one}"
+
+    if 2 <= count % 10 <= 4 and not 12 <= count % 100 <= 14:
+        return f"{count} {few}"
+
+    return f"{count} {many}"
+
+
 def _list_or_empty(items: list[str], empty: str) -> str:
     if not items:
         return f'<p class="empty">{_escape(empty)}</p>'
@@ -72,17 +83,23 @@ def _profile(cabinet: Cabinet) -> str:
     blocks = []
 
     for section in cabinet.profile_sections:
-        hint = f'<p class="hint">{_escape(section["hint"])}</p>' if section.get("hint") else ""
-        lines = (
-            _list_or_empty(section["lines"], section.get("hint", "Пока пусто."))
-            if section["lines"]
-            else f'<p class="empty">{_escape(section.get("hint", "Пока пусто."))}</p>'
-        )
+        if section["lines"]:
+            # A hint under a field that is already filled in is advice nobody
+            # asked for.
+            body = _list_or_empty(section["lines"], "")
+        else:
+            body = f'<p class="empty">{_escape(section.get("hint", "Пока пусто."))}</p>'
+
         blocks.append(
-            f'<div class="block"><h3>{_escape(section["title"])}</h3>{lines}{hint if section["lines"] else ""}</div>'
+            f'<div class="block"><h3>{_escape(section["title"])}</h3>{body}</div>'
         )
 
-    return f'<section><h2>Профиль и фигура <span class="count">{len(cabinet.profile_sections)} разделов</span></h2>{"".join(blocks)}</section>'
+    count = _plural(len(cabinet.profile_sections), "раздел", "раздела", "разделов")
+
+    return (
+        f'<section><h2>Профиль и фигура <span class="count">{count}</span></h2>'
+        f'{"".join(blocks)}</section>'
+    )
 
 
 def _taste(cabinet: Cabinet) -> str:
@@ -121,10 +138,12 @@ def _wardrobe(cabinet: Cabinet) -> str:
     cards = []
 
     for item in cabinet.wardrobe:
-        if item.get("image_path"):
-            picture = f'<img src="/api/wardrobe/images/{_escape(item["id"])}">'
-        else:
-            picture = '<div class="no-photo">без фото</div>'
+        # A word where a photograph should be is noise, not information.
+        picture = (
+            f'<img src="/api/wardrobe/images/{_escape(item["id"])}">'
+            if item.get("image_path")
+            else ""
+        )
 
         cards.append(f'<div class="card">{picture}{_escape(item.get("name", ""))}</div>')
 
@@ -212,17 +231,16 @@ def _purchases(cabinet: Cabinet) -> str:
 
     for item in purchases.get("items", []):
         price = (
-            f"{item['paid']:g} {_escape(item['currency'])}"
+            _escape(money(item["paid"], item.get("currency") or "RUB"))
             if item.get("paid") is not None
             else "без цены"
         )
         link = f' — <a href="{_escape(item["url"])}">ссылка</a>' if item.get("url") else ""
         rows.append(f"<li>{_escape(item['title'])}: {price}{link}</li>")
 
-    total = purchases.get("total", 0)
     summary = (
-        f'<p class="empty">Всего: {total:g} {purchases.get("currency", "RUB")}'
-        f" за {purchases.get('count', 0)} покупок</p>"
+        f'<p class="empty">Всего: {_escape(money(purchases.get("total", 0), purchases.get("currency", "RUB")))}'
+        f" за {_plural(purchases.get('count', 0), 'покупку', 'покупки', 'покупок')}</p>"
     )
 
     return (
