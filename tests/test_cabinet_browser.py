@@ -509,3 +509,62 @@ class TestAccountDoor:
         assert guest.inner_text("#accountName").strip() == "novichok"
         assert guest.inner_text("#accountOpen").strip() == "Выйти"
         assert not guest.is_visible("#accountCreate"), "создать аккаунт повторно незачем"
+
+
+class TestWardrobeTabs:
+    """Uploading your own things gets its own place.
+
+    Three unrelated jobs shared one column: the items, the taste votes and the
+    upload form, with the critique button wedged into the upload form because it
+    had nowhere else to live.
+    """
+
+    @pytest.fixture
+    def wardrobe(self, page):
+        page.goto(page.url.split("/me")[0] + "/")
+        page.wait_for_timeout(500)
+        page.evaluate("document.getElementById('wardrobe').hidden = false")
+        page.wait_for_timeout(200)
+
+        return page
+
+    def test_there_are_three_tabs(self, wardrobe):
+        assert wardrobe.locator('[role="tab"]').count() == 3
+        assert wardrobe.inner_text("#tabItems").strip() == "Вещи"
+        assert wardrobe.inner_text("#tabAdd").strip() == "Добавить"
+        assert wardrobe.inner_text("#tabTaste").strip() == "Вкус"
+
+    def test_only_one_panel_shows_at_a_time(self, wardrobe):
+        assert wardrobe.is_visible("#wardrobeGrid")
+        assert not wardrobe.is_visible("#wardrobeForm")
+        assert not wardrobe.is_visible("#referencePhoto")
+
+        wardrobe.click("#tabAdd")
+        wardrobe.wait_for_timeout(200)
+
+        assert wardrobe.is_visible("#wardrobeForm")
+        assert not wardrobe.is_visible("#wardrobeGrid")
+        assert wardrobe.get_attribute("#tabAdd", "aria-selected") == "true"
+        assert wardrobe.get_attribute("#tabItems", "aria-selected") == "false"
+
+    def test_the_taste_votes_are_their_own_tab(self, wardrobe):
+        wardrobe.click("#tabTaste")
+        wardrobe.wait_for_timeout(200)
+
+        # The file input is hidden by design; the label beside it is the button.
+        assert wardrobe.is_visible("#panelTaste .file-button")
+        assert wardrobe.is_visible("#referenceLiked")
+        assert not wardrobe.is_visible("#wardrobeForm")
+
+    def test_the_critique_button_left_the_upload_form(self, wardrobe):
+        # It shoots a photo of the outfit being worn, which has nothing to do
+        # with uploading a thing to the wardrobe.
+        assert wardrobe.locator("#wardrobeForm #critiqueButton").count() == 0
+        assert wardrobe.locator("#panelItems #critiqueButton").count() == 1
+
+    def test_the_arrow_keys_move_between_tabs(self, wardrobe):
+        wardrobe.focus("#tabItems")
+        wardrobe.keyboard.press("ArrowRight")
+        wardrobe.wait_for_timeout(200)
+
+        assert wardrobe.get_attribute("#tabAdd", "aria-selected") == "true"

@@ -889,6 +889,47 @@ HTML_PAGE = """<!doctype html>
         }
       }
 
+    /* Tabs: a thin line under the chosen one, no boxes. */
+    .tabs {
+      display: flex;
+      gap: 2px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .tab {
+      appearance: none;
+      padding: 8px 12px 10px;
+      font: inherit;
+      font-size: 13px;
+      color: var(--muted);
+      background: none;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      border-radius: 0;
+      cursor: pointer;
+    }
+
+    .tab:hover {
+      color: var(--ink);
+    }
+
+    .tab[aria-selected="true"] {
+      color: var(--ink);
+      font-weight: 500;
+      border-bottom-color: var(--accent);
+    }
+
+    .tab:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: -2px;
+      border-radius: 6px;
+    }
+
+    .tab-panel[hidden] {
+      display: none;
+    }
+
     /* Account dialog: two doors instead of one that quietly does both. */
     .modal {
       position: fixed;
@@ -939,13 +980,13 @@ HTML_PAGE = """<!doctype html>
       font: inherit;
       font-size: 14px;
       color: var(--ink);
-      background: var(--surface-sunk);
+      background: var(--surface-2);
       border: 1px solid var(--line);
       border-radius: 10px;
     }
 
     .modal-card input:focus-visible {
-      outline: 2px solid var(--berry);
+      outline: 2px solid var(--accent);
       outline-offset: 1px;
     }
 
@@ -1052,47 +1093,109 @@ HTML_PAGE = """<!doctype html>
           </div>
 
           <div class="wardrobe-body">
-          <div class="wardrobe-grid" id="wardrobeGrid"></div>
-          <div class="look-session" id="lookSession" hidden></div>
-
-          <div class="wardrobe-block">
-            <div class="wardrobe-reference-actions">
-              <span class="row-label">Вкус</span>
-              <label class="file-button">
-                <input type="file" id="referencePhoto" accept="image/*" hidden>
-                <span>Прислать фото</span>
-              </label>
-              <select id="referenceLiked">
-                <option value="1">нравится</option>
-                <option value="0">не нравится</option>
-              </select>
-            </div>
-            <div class="wardrobe-references" id="wardrobeReferences"></div>
-            <p class="hint" id="tasteNotes"></p>
+          <!-- Uploading your own things was one row in the middle of the
+               wardrobe, next to taste votes and the critique button. Three
+               unrelated jobs in a column; each gets its own tab now. -->
+          <div class="tabs" id="wardrobeTabs" role="tablist" aria-label="Гардероб">
+            <button
+              type="button"
+              class="tab"
+              role="tab"
+              id="tabItems"
+              aria-controls="panelItems"
+              aria-selected="true"
+            >
+              Вещи
+            </button>
+            <button
+              type="button"
+              class="tab"
+              role="tab"
+              id="tabAdd"
+              aria-controls="panelAdd"
+              aria-selected="false"
+            >
+              Добавить
+            </button>
+            <button
+              type="button"
+              class="tab"
+              role="tab"
+              id="tabTaste"
+              aria-controls="panelTaste"
+              aria-selected="false"
+            >
+              Вкус
+            </button>
           </div>
 
-          <form class="wardrobe-actions" id="wardrobeForm">
-            <span class="row-label">Вещь</span>
-            <label class="file-button">
-              <input type="file" id="wardrobePhoto" accept="image/*" hidden>
-              <span>Выбрать фото</span>
-            </label>
-            <select id="wardrobeCategory">
-              <option value="unknown">не разобралась</option>
-              <option value="top">верх</option>
-              <option value="bottom">низ</option>
-              <option value="dress">платье</option>
-              <option value="shoes">обувь</option>
-              <option value="outerwear">верхняя одежда</option>
-              <option value="bag">сумка</option>
-              <option value="accessory">аксессуар</option>
-            </select>
-            <input type="text" id="wardrobeNote" placeholder="например, кремовый кашемир">
-            <button type="submit" class="secondary">Добавить</button>
+          <div
+            class="tab-panel"
+            role="tabpanel"
+            id="panelItems"
+            aria-labelledby="tabItems"
+          >
+            <div class="wardrobe-grid" id="wardrobeGrid"></div>
+            <div class="look-session" id="lookSession" hidden></div>
             <button type="button" class="secondary" id="critiqueButton">
               Оценить образ
             </button>
-          </form>
+          </div>
+
+          <div
+            class="tab-panel"
+            role="tabpanel"
+            id="panelAdd"
+            aria-labelledby="tabAdd"
+            hidden
+          >
+            <form class="wardrobe-actions" id="wardrobeForm">
+              <span class="row-label">Вещь</span>
+              <label class="file-button">
+                <input type="file" id="wardrobePhoto" accept="image/*" hidden>
+                <span>Выбрать фото</span>
+              </label>
+              <select id="wardrobeCategory">
+                <option value="unknown">не разобралась</option>
+                <option value="top">верх</option>
+                <option value="bottom">низ</option>
+                <option value="dress">платье</option>
+                <option value="shoes">обувь</option>
+                <option value="outerwear">верхняя одежда</option>
+                <option value="bag">сумка</option>
+                <option value="accessory">аксессуар</option>
+              </select>
+              <input type="text" id="wardrobeNote" placeholder="например, кремовый кашемир">
+              <button type="submit" class="secondary">Добавить</button>
+            </form>
+            <p class="hint" id="wardrobeAddHint">
+              Или просто пришлите фото вещи в чат — я посмотрю и добавлю сама.
+            </p>
+          </div>
+
+          <div
+            class="tab-panel"
+            role="tabpanel"
+            id="panelTaste"
+            aria-labelledby="tabTaste"
+            hidden
+          >
+            <div class="wardrobe-block">
+              <div class="wardrobe-reference-actions">
+                <span class="row-label">Вкус</span>
+                <label class="file-button">
+                  <input type="file" id="referencePhoto" accept="image/*" hidden>
+                  <span>Прислать фото</span>
+                </label>
+                <select id="referenceLiked">
+                  <option value="1">нравится</option>
+                  <option value="0">не нравится</option>
+                </select>
+              </div>
+              <div class="wardrobe-references" id="wardrobeReferences"></div>
+              <p class="hint" id="tasteNotes"></p>
+            </div>
+          </div>
           <input type="file" id="lookPhoto" accept="image/*" hidden>
           <input type="file" id="lookPhotoAfter" accept="image/*" hidden>
           </div>
@@ -1661,6 +1764,53 @@ HTML_PAGE = """<!doctype html>
       wardrobeToggle.addEventListener("click", () => {
         setWardrobeCollapsed(!wardrobeNode.classList.contains("collapsed"));
       });
+
+      const wardrobeTabs = [
+        ["tabItems", "panelItems"],
+        ["tabAdd", "panelAdd"],
+        ["tabTaste", "panelTaste"],
+      ];
+
+      function showWardrobeTab(index) {
+        wardrobeTabs.forEach(([tabId, panelId], at) => {
+          const chosen = at === index;
+          document.getElementById(tabId).setAttribute(
+            "aria-selected",
+            chosen ? "true" : "false",
+          );
+          document.getElementById(panelId).hidden = !chosen;
+        });
+      }
+
+      wardrobeTabs.forEach(([tabId], at) => {
+        document.getElementById(tabId).addEventListener("click", () => {
+          showWardrobeTab(at);
+        });
+      });
+
+      // On the strip itself, not on the panels: the focus sits on a tab, and a
+      // tab is not inside its own panel.
+      document
+        .getElementById("wardrobeTabs")
+        .addEventListener("keydown", (event) => {
+          if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+
+          // A tab strip is not a place to trap the keyboard.
+          event.preventDefault();
+
+          const current = wardrobeTabs.findIndex(
+            ([tabId]) => tabId === event.target.id,
+          );
+
+          if (current < 0) return;
+
+          const next = event.key === "ArrowRight"
+            ? (current + 1) % wardrobeTabs.length
+            : (current - 1 + wardrobeTabs.length) % wardrobeTabs.length;
+
+          showWardrobeTab(next);
+          document.getElementById(wardrobeTabs[next][0]).focus();
+        });
       const wardrobeForm = document.getElementById("wardrobeForm");
       const wardrobePhoto = document.getElementById("wardrobePhoto");
       const wardrobeCategory = document.getElementById("wardrobeCategory");
@@ -1821,6 +1971,10 @@ HTML_PAGE = """<!doctype html>
           wardrobePhoto.value = "";
           wardrobeNote.value = "";
           await loadWardrobe();
+          // The thing was just added, so go and look at it. Leaving the client
+          // on the upload tab after a successful upload means the result of
+          // their own click is on a screen they are no longer looking at.
+          showWardrobeTab(0);
           addAssistantMessage(
             payload.warning
               ? `Добавила «${payload.item.name}». ${payload.warning}. Проверьте карточку в гардеробе.`

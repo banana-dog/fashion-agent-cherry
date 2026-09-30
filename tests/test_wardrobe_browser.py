@@ -94,6 +94,7 @@ def test_uploading_a_photo_adds_a_card(browser_page, tmp_path):
     path = tmp_path / "sweater.jpg"
     path.write_bytes(jpeg())
 
+    browser_page.locator("#tabAdd").click()
     browser_page.locator("#wardrobeNote").fill("кремовый кашемир")
     browser_page.locator("#wardrobeCategory").select_option("top")
     browser_page.locator("#wardrobePhoto").set_input_files(str(path))
@@ -167,6 +168,7 @@ def test_reference_photo_is_shown_as_a_taste_sample(browser_page, tmp_path):
     path = tmp_path / "reference.jpg"
     path.write_bytes(jpeg())
 
+    browser_page.locator("#tabTaste").click()
     browser_page.locator("#referenceLiked").select_option("1")
     browser_page.locator("#referencePhoto").set_input_files(str(path))
 
@@ -180,6 +182,7 @@ def test_a_disliked_reference_is_marked_apart(browser_page, tmp_path):
     path = tmp_path / "reference.jpg"
     path.write_bytes(jpeg())
 
+    browser_page.locator("#tabTaste").click()
     browser_page.locator("#referenceLiked").select_option("0")
     browser_page.locator("#referencePhoto").set_input_files(str(path))
     browser_page.wait_for_selector("#wardrobeReferences img.disliked")
