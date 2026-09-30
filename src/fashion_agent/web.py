@@ -889,6 +889,91 @@ HTML_PAGE = """<!doctype html>
         }
       }
 
+    /* Account dialog: two doors instead of one that quietly does both. */
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(28, 22, 18, 0.32);
+    }
+
+    .modal[hidden] {
+      display: none;
+    }
+
+    .modal-card {
+      width: min(380px, 100%);
+      padding: 22px;
+      border-radius: 16px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 48px rgba(28, 22, 18, 0.16);
+    }
+
+    .modal-card h2 {
+      margin: 0 0 4px;
+      font-size: 17px;
+    }
+
+    .modal-note {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .modal-card label {
+      display: block;
+      margin-bottom: 12px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .modal-card input {
+      display: block;
+      width: 100%;
+      margin-top: 5px;
+      padding: 10px 12px;
+      font: inherit;
+      font-size: 14px;
+      color: var(--ink);
+      background: var(--surface-sunk);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .modal-card input:focus-visible {
+      outline: 2px solid var(--berry);
+      outline-offset: 1px;
+    }
+
+    .modal-error {
+      margin: 0 0 12px;
+      padding: 9px 12px;
+      font-size: 13px;
+      color: #8c2f39;
+      background: #fdf1f1;
+      border: 1px solid #f0d3d6;
+      border-radius: 10px;
+    }
+
+    .modal-error[hidden] {
+      display: none;
+    }
+
+    .modal-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .modal-actions .spacer {
+      margin-left: auto;
+    }
+
     </style>
   </head>
   <body>
@@ -905,6 +990,9 @@ HTML_PAGE = """<!doctype html>
             <span class="account-name" id="accountName">Гость</span>
             <div class="account-buttons">
               <button type="button" class="secondary" id="accountOpen">Войти</button>
+              <button type="button" class="secondary" id="accountCreate">
+                Регистрация
+              </button>
               <button type="button" class="quiet" id="accountExport">Мои данные</button>
               <button type="button" class="quiet" id="accountForget">Удалить</button>
             </div>
@@ -1009,6 +1097,53 @@ HTML_PAGE = """<!doctype html>
           <input type="file" id="lookPhotoAfter" accept="image/*" hidden>
           </div>
         </section>
+
+        <div class="modal" id="accountModal" hidden>
+          <div
+            class="modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="accountModalTitle"
+          >
+            <h2 id="accountModalTitle">Вход</h2>
+            <p class="modal-note" id="accountModalNote"></p>
+            <!-- novalidate: one place for errors, not a browser bubble next to
+                 our own styling. -->
+            <form id="accountForm" novalidate>
+              <label for="accountLogin">
+                Имя для входа
+                <input
+                  type="text"
+                  id="accountLogin"
+                  autocomplete="username"
+                  required
+                >
+              </label>
+              <label for="accountPass">
+                Пароль
+                <input
+                  type="password"
+                  id="accountPass"
+                  autocomplete="current-password"
+                  minlength="8"
+                  required
+                >
+              </label>
+              <p class="modal-error" id="accountError" hidden></p>
+              <div class="modal-actions">
+                <button type="submit" class="secondary" id="accountSubmit">
+                  Войти
+                </button>
+                <button type="button" class="quiet" id="accountSwitch">
+                  Создать аккаунт
+                </button>
+                <button type="button" class="quiet spacer" id="accountClose">
+                  Отмена
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
 
         <form class="composer" id="chatForm">
           <textarea
@@ -1186,34 +1321,84 @@ HTML_PAGE = """<!doctype html>
         );
       }
 
+      let accountRegistering = false;
+
       function showAccount(data) {
         const name = document.getElementById("accountName");
         const button = document.getElementById("accountOpen");
         const exporting = document.getElementById("accountExport");
         const forgetting = document.getElementById("accountForget");
+        const creating = document.getElementById("accountCreate");
+
         if (data.anonymous) {
           name.textContent = "Гость";
           button.textContent = "Войти";
+          creating.hidden = false;
           exporting.hidden = false;
           forgetting.hidden = true;
         } else {
           name.textContent = data.login;
           button.textContent = "Выйти";
+          creating.hidden = true;
           exporting.hidden = false;
           forgetting.hidden = false;
         }
       }
 
-      async function openAccountDialog() {
-        const who = await (await fetch("/api/account")).json();
-        const registering = who.anonymous;
-        const login = prompt(
-          registering ? "Имя для входа" : "Имя для входа",
-          who.login || "",
-        );
-        if (!login) return;
-        const passphrase = prompt("Пароль (не короче 8 символов)");
-        if (!passphrase) return;
+      // One button used to do both jobs: a guest who pressed "Войти" was silently
+      // given an account, through two browser prompts that asked the same
+      // question twice. Two doors, two names.
+      function paintAccountDialog(registering) {
+        document.getElementById("accountModalTitle").textContent = registering
+          ? "Новый аккаунт"
+          : "Вход";
+        document.getElementById("accountModalNote").textContent = registering
+          ? "Образы, гардероб и покупки будут ждать вас на этом имени."
+          : "";
+        document.getElementById("accountSubmit").textContent = registering
+          ? "Создать"
+          : "Войти";
+        document.getElementById("accountSwitch").textContent = registering
+          ? "У меня уже есть аккаунт"
+          : "Создать аккаунт";
+        document.getElementById("accountPass").autocomplete = registering
+          ? "new-password"
+          : "current-password";
+        accountRegistering = registering;
+      }
+
+      function openAccountDialog(registering) {
+        paintAccountDialog(registering);
+        document.getElementById("accountError").hidden = true;
+        document.getElementById("accountModal").hidden = false;
+        document.getElementById("accountLogin").focus();
+      }
+
+      function closeAccountDialog() {
+        document.getElementById("accountModal").hidden = true;
+      }
+
+      function accountError(message) {
+        const error = document.getElementById("accountError");
+        error.textContent = message;
+        error.hidden = !message;
+      }
+
+      async function submitAccountDialog(event) {
+        event.preventDefault();
+
+        const login = document.getElementById("accountLogin").value.trim();
+        const passphrase = document.getElementById("accountPass").value;
+        const registering = accountRegistering;
+
+        if (!login || !passphrase) return;
+
+        if (registering && passphrase.length < 8) {
+          accountError("Пароль короче 8 символов.");
+          return;
+        }
+
+        accountError("");
 
         const response = await fetch(
           registering ? "/api/account" : "/api/account/sign-in",
@@ -1224,11 +1409,16 @@ HTML_PAGE = """<!doctype html>
           },
         );
         const data = await response.json();
+
         if (!response.ok) {
-          alert(data.error || "Не получилось.");
+          accountError(data.error || "Не получилось.");
           return;
         }
+
+        document.getElementById("accountPass").value = "";
+        closeAccountDialog();
         showAccount(data);
+
         if (registering) {
           addAssistantMessage(
             "Готово. Теперь образы и гардероб будут ждать вас на этом имени —"
@@ -1292,7 +1482,7 @@ HTML_PAGE = """<!doctype html>
         try {
           const who = await (await fetch("/api/account")).json();
           if (who.anonymous) {
-            await openAccountDialog();
+            openAccountDialog(false);
           } else {
             await signOut();
           }
@@ -1300,6 +1490,35 @@ HTML_PAGE = """<!doctype html>
           addAssistantMessage("Не смогла связаться с сервером.");
         }
       });
+
+      document
+        .getElementById("accountCreate")
+        .addEventListener("click", () => openAccountDialog(true));
+
+      document
+        .getElementById("accountSwitch")
+        .addEventListener("click", () => {
+          paintAccountDialog(!accountRegistering);
+          accountError("");
+        });
+
+      document
+        .getElementById("accountClose")
+        .addEventListener("click", closeAccountDialog);
+
+      document
+        .getElementById("accountModal")
+        .addEventListener("click", (event) => {
+          if (event.target.id === "accountModal") closeAccountDialog();
+        });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeAccountDialog();
+      });
+
+      document
+        .getElementById("accountForm")
+        .addEventListener("submit", submitAccountDialog);
 
       document.getElementById("accountExport").addEventListener("click", exportData);
       document.getElementById("accountForget").addEventListener("click", forgetMe);

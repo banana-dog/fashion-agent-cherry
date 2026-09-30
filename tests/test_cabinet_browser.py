@@ -439,3 +439,73 @@ class TestPurchaseFormInBrowser:
         page.wait_for_timeout(600)
 
         assert "Тренч" not in page.inner_text("body").split("История покупок")[1]
+
+
+class TestAccountDoor:
+    """A guest has to be able to tell entering from signing up.
+
+    One button used to do both: pressing "Войти" quietly created an account
+    through two browser prompts asking the same question twice, so there was no
+    sign-up anywhere on the page.
+    """
+
+    @pytest.fixture
+    def guest(self, page):
+        page.evaluate("async () => fetch('/api/account/sign-out', {method: 'POST'})")
+        page.goto(page.url.split("/me")[0] + "/")
+        page.wait_for_timeout(400)
+
+        return page
+
+    def test_a_guest_sees_both_doors(self, guest):
+        assert guest.is_visible("#accountOpen")
+        assert guest.inner_text("#accountOpen").strip() == "Войти"
+        assert guest.is_visible("#accountCreate")
+        assert guest.inner_text("#accountCreate").strip() == "Регистрация"
+
+    def test_registering_is_not_entering(self, guest):
+        native: list[str] = []
+        guest.on("dialog", lambda dialog: (native.append(dialog.type), dialog.dismiss()))
+
+        guest.click("#accountCreate")
+        guest.wait_for_timeout(300)
+
+        assert native == [], "браузерные диалоги больше не используются"
+        assert guest.is_visible("#accountModal")
+        assert guest.inner_text("#accountModalTitle").strip() == "Новый аккаунт"
+        assert guest.inner_text("#accountSubmit").strip() == "Создать"
+        assert guest.inner_text("#accountSwitch").strip() == "У меня уже есть аккаунт"
+
+    def test_the_two_modes_swap_over(self, guest):
+        guest.on("dialog", lambda dialog: dialog.dismiss())
+        guest.click("#accountCreate")
+        guest.click("#accountSwitch")
+        guest.wait_for_timeout(200)
+
+        assert guest.inner_text("#accountModalTitle").strip() == "Вход"
+        assert guest.inner_text("#accountSubmit").strip() == "Войти"
+        assert guest.inner_text("#accountSwitch").strip() == "Создать аккаунт"
+
+    def test_a_short_password_is_refused_in_place(self, guest):
+        guest.on("dialog", lambda dialog: dialog.dismiss())
+        guest.click("#accountCreate")
+        guest.fill("#accountLogin", "novichok")
+        guest.fill("#accountPass", "koro")
+        guest.click("#accountSubmit")
+        guest.wait_for_timeout(200)
+
+        assert guest.is_visible("#accountModal"), "окно не должно закрываться самым"
+        assert "8 символов" in guest.inner_text("#accountError")
+
+    def test_signing_up_from_the_dialog_names_the_client(self, guest):
+        guest.on("dialog", lambda dialog: dialog.dismiss())
+        guest.click("#accountCreate")
+        guest.fill("#accountLogin", "novichok")
+        guest.fill("#accountPass", PHRASE)
+        guest.click("#accountSubmit")
+        guest.wait_for_timeout(1200)
+
+        assert not guest.is_visible("#accountModal")
+        assert guest.inner_text("#accountName").strip() == "novichok"
+        assert guest.inner_text("#accountOpen").strip() == "Выйти"
+        assert not guest.is_visible("#accountCreate"), "создать аккаунт повторно незачем"
