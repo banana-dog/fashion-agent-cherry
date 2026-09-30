@@ -132,9 +132,10 @@ LETTER_SIZE_RE = re.compile(
     r"(?<![A-Za-z])(" + "|".join(SIZE_LETTERS) + r")(?![A-Za-z])",
 )
 
-# Marketplace snippets carry article numbers and model sizes next to prices, so
-# a number next to a currency mark is not proof of a price. These patterns only
-# match the shapes a shop actually writes.
+# A currency mark next to the number is what makes it money: article numbers and
+# review counts in these snippets are bare digits, "6071533" and "54,2", and
+# neither carries a mark. Every captured snippet that the trust rules were
+# written for has no marked number in it at all.
 SIZE_WORD_RE = re.compile(r"размер", re.IGNORECASE)
 SIZE_WINDOW = 90
 PRICE_HINT_RE = re.compile(
@@ -301,11 +302,12 @@ def parse_offered_sizes(text: str | None) -> list[str]:
 def parse_trusted_price(
     text: str | None,
 ) -> tuple[int | None, int | None]:
-    """Return a price only when the snippet is explicit enough to trust it.
+    """Return the price the snippet states, or nothing when it states none.
 
-    Accepts "от 1 500 ₽" and a discount line such as "2 201 ₽ 5 500 ₽ −60%",
-    which is what shops actually write. A bare number with a currency mark is
-    ignored because article numbers look the same.
+    Accepts "от 1 500 ₽", a discount line such as "2 201 ₽ 5 500 ₽ −60%", and a
+    lone price such as "1.999 ₽". Every accepted number carries a currency
+    mark, which is the only test applied to it: a number without one is an
+    article number, a size or a review count, and means nothing here.
 
     Both notations count, as in "₽ 2 201 ₽ 5 500 −60%": the mark-first form was
     defined but only ever read by the lenient parser, which nothing calls, so
@@ -313,7 +315,7 @@ def parse_trusted_price(
 
     Both are read and merged by position rather than one after the other,
     because one discount line mixes them. Reading the suffix form alone stops
-    after the first price in "₽ 2 201 ₽ 5 500", and a discount needs a pair.
+    after the first price in "₽ 2 201 5 500", and a discount needs a pair.
 
     A price found by both patterns is one price, not two, so overlaps are
     dropped: counting "2 201" twice leaves two equal numbers, and a discount
@@ -347,8 +349,24 @@ def parse_trusted_price(
         taken.append((start, end))
         amounts.append(amount)
 
-    if len(amounts) < 2:
+    if not amounts:
         return None, None
+
+    if len(amounts) == 1:
+        # A lone price is what a shop writes most often, and it used to be
+        # dropped because one number alone proves nothing. The mark proves it:
+        # both patterns require one, and every article number and review count
+        # in these snippets is a bare digit. Dropping these under a budget is
+        # what made a client hear "I found separate things" while the shelves
+        # were full.
+        #
+        # A discount marker still blocks it. "5 005 ₽ −60%" names one number
+        # and says half of it is missing, so that number may be the price
+        # before the sale rather than the one charged.
+        if DISCOUNT_RE.search(text):
+            return None, None
+
+        return amounts[0], None
 
     ascending = sorted(amounts[:2])
 

@@ -49,8 +49,17 @@ def test_explicit_from_price_is_trusted():
     assert parse_trusted_price("Цена $ 89.90") == (90, None)
 
 
-def test_single_number_is_not_trusted():
-    assert parse_trusted_price("Свитер 2 201 ₽") == (None, None)
+def test_single_marked_price_is_trusted():
+    # "Платье 1.999 ₽" is how the shops write prices most often, and it used to
+    # be dropped: one number alone was held to prove nothing. The currency mark
+    # is the proof, and every article number in the captured snippets is a bare
+    # digit with no mark at all.
+    assert parse_trusted_price("Свитер 2 201 ₽") == (2201, None)
+    assert parse_trusted_price("Платье 1.999 ₽") == (1999, None)
+    assert parse_trusted_price("Платье миди · 1 999 ₽ · 4,9 (128 отзывов)") == (
+        1999,
+        None,
+    )
 
 
 def test_two_numbers_without_a_discount_are_not_trusted():
@@ -184,7 +193,6 @@ def test_one_price_found_twice_is_still_one_price():
 
 
 def test_dot_is_not_always_a_thousands_separator():
-    # A single price is still untrusted, and a dot with two digits is decimals,
-    # which the hint form reads as 12 units rather than 12.5.
-    assert parse_trusted_price("Свитер 2 201 ₽") == (None, None)
+    # A dot with two digits is decimals, which the hint form reads as 12 units
+    # rather than 12.5.
     assert parse_trusted_price("Цена 12.50 ₽") == (12, None)
