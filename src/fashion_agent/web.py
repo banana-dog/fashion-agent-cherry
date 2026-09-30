@@ -1,6 +1,7 @@
 import json
 import sqlite3
 import time
+import traceback
 import uuid
 from datetime import datetime
 from http import HTTPStatus
@@ -14,6 +15,7 @@ from PIL import Image
 from fashion_agent.accounts import get_accounts
 from fashion_agent.body_profile import BodyProfileConversation
 from fashion_agent.graph import graph
+from fashion_agent.outfits.labels import category_label
 from fashion_agent.storage import build_store
 from fashion_agent.style_dna import Context
 from fashion_agent.taste_catalog_web import render_catalog
@@ -21,6 +23,7 @@ from fashion_agent.taste_conversation import TasteConversation
 from fashion_agent.taste_quiz import load_cards, resolve_card_image
 from fashion_agent.taste_quiz_web import TASTE_QUIZ_HTML
 from fashion_agent.wardrobe_web import (
+    add_item_from_upload,
     add_reference,
     add_wardrobe_item,
     critique_look,
@@ -30,12 +33,16 @@ from fashion_agent.wardrobe_web import (
     list_looks,
     list_references,
     list_wardrobe,
+    read_photo,
+    read_upload,
     reassess_look,
     revise_look,
+    serialise_item,
     serve_reference_image,
     serve_wardrobe_image,
     update_wardrobe_item,
 )
+from fashion_agent.web_upload import MultipartError
 
 SESSION_COOKIE = "cherry_session"
 
@@ -889,6 +896,27 @@ HTML_PAGE = """<!doctype html>
         }
       }
 
+    /* A photo waiting to be sent, with the way to take it back. */
+    .chat-attachment {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .chat-attachment[hidden] {
+      display: none;
+    }
+
+    .chat-attachment img {
+      width: 52px;
+      height: 52px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--surface-2);
+    }
+
     /* Tabs: a thin line under the chosen one, no boxes. */
     .tabs {
       display: flex;
@@ -1249,12 +1277,22 @@ HTML_PAGE = """<!doctype html>
         </div>
 
         <form class="composer" id="chatForm">
+          <div class="chat-attachment" id="chatAttachment" hidden>
+            <img id="chatAttachmentPreview" alt="" >
+            <button type="button" class="quiet" id="chatAttachmentDrop">
+              Убрать
+            </button>
+          </div>
           <textarea
             id="prompt"
             rows="2"
             placeholder="Собери образ на концерт, бюджет до 40 000 ₽"
           ></textarea>
           <div class="composer-row">
+            <label class="file-button" id="chatPhotoButton" title="Прислать фото вещи">
+              <input type="file" id="chatPhoto" accept="image/*" hidden>
+              <span>Приложить фото</span>
+            </label>
             <button id="sendButton" type="submit">Отправить</button>
           </div>
         </form>
@@ -1723,19 +1761,82 @@ HTML_PAGE = """<!doctype html>
         setBusy(false, "Новый разговор создан");
       }
 
-      formNode.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        const message = promptNode.value.trim();
+      const chatPhoto = document.getElementById("chatPhoto");
+      const chatAttachment = document.getElementById("chatAttachment");
+      const chatAttachmentPreview = document.getElementById("chatAttachmentPreview");
 
-        if (!message) {
+      function clearChatAttachment() {
+        chatPhoto.value = "";
+        chatAttachment.hidden = true;
+        chatAttachmentPreview.removeAttribute("src");
+      }
+
+      chatPhoto.addEventListener("change", () => {
+        const file = chatPhoto.files[0];
+
+        if (!file) {
+          clearChatAttachment();
+
           return;
         }
 
-        addMessage("user", message);
+        // Shown before sending: nobody should discover the wrong photo after
+        // it is already in the wardrobe.
+        chatAttachmentPreview.src = URL.createObjectURL(file);
+        chatAttachment.hidden = false;
+      });
+
+      document
+        .getElementById("chatAttachmentDrop")
+        .addEventListener("click", clearChatAttachment);
+
+      async function sendPhotoWithMessage(message) {
+        const file = chatPhoto.files[0];
+
+        if (!file) return;
+
+        saveSettings();
+        setBusy(true, "Cherry смотрит фото...");
+
+        const body = new FormData();
+        body.append("photo", file, file.name);
+        body.append("message", message);
+
+        const response = await fetch("/api/chat/photo", {method: "POST", body});
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Не получилось отправить фото.");
+        }
+
+        clearChatAttachment();
         promptNode.value = "";
+        await loadWardrobe();
+        showWardrobeTab(0);
+        renderTasteResponse(data);
+        setBusy(false, "Ответ готов");
+      }
+
+      formNode.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const message = promptNode.value.trim();
+        const hasPhoto = chatPhoto.files.length > 0;
+
+        // A photo on its own is a complete message: "вот моя вещь" needs no
+        // text, and asking for text first would make the button pointless.
+        if (!message && !hasPhoto) {
+          return;
+        }
+
+        addMessage("user", message || "Фото вещи");
 
         try {
-          await sendMessage(message);
+          if (hasPhoto) {
+            await sendPhotoWithMessage(message);
+          } else {
+            promptNode.value = "";
+            await sendMessage(message);
+          }
         } catch (error) {
           addAssistantMessage(`Ошибка: ${error.message}`);
           setBusy(false, "Ошибка запроса");
@@ -2804,6 +2905,11 @@ class CherryWebHandler(BaseHTTPRequestHandler):
             self._handle_chat()
             return
 
+        if self.path == "/api/chat/photo":
+            self._ensure_session()
+            self._handle_chat_photo()
+            return
+
         if self.path == "/api/wardrobe/items":
             self._ensure_session()
             add_wardrobe_item(self, self._user_id())
@@ -3473,6 +3579,72 @@ class CherryWebHandler(BaseHTTPRequestHandler):
             {
                 "report": report.model_dump(),
                 "active_trends": len(repository.trends()),
+            },
+        )
+
+    def _handle_chat_photo(self):
+        """A photo sent in the chat becomes a wardrobe item without a form.
+
+        Asking a client to choose a category for a garment they photographed in
+        their own mirror is a question about something only a model can see, so
+        the photo goes to the model and the answer is stored.
+        """
+        try:
+            form = read_upload(self)
+            data, suffix = read_photo(form)
+        except (MultipartError, ValueError) as error:
+            from fashion_agent.web_errors import describe
+
+            self._send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"error": describe(error)},
+            )
+
+            return
+
+        try:
+            item, warning = add_item_from_upload(
+                self._user_id(),
+                data,
+                suffix,
+                category=form.text("category") or "unknown",
+                note=form.text("message") or "",
+            )
+        except Exception:  # noqa: BLE001 - a client upload must never 500 silently
+            traceback.print_exc()
+
+            self._send_json(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {"error": "Не смогла разобрать фото. Попробуйте ещё раз."},
+            )
+
+            return
+
+        item_payload = serialise_item(item)
+        lines = [f"Добавила «{item.name}» в гардероб."]
+
+        if item.category and item.category != "unknown":
+            lines[0] += f" Категория: {category_label(item.category)}."
+
+        if not item.recognised:
+            lines.append(
+                "Фото я не смогла прочитать: цвет и материал лучше поправить руками,"
+                " на карточке есть кнопка."
+            )
+        elif item.unknown:
+            lines.append(
+                "Не разобралась: " + ", ".join(item.unknown) + " — поправите на карточке."
+            )
+
+        lines.append("Скажите, с чем хотите её составить.")
+
+        self._send_json(
+            HTTPStatus.CREATED,
+            {
+                "reply": "\n\n".join(lines),
+                "item": item_payload,
+                "warning": warning,
+                "outfits": [],
             },
         )
 

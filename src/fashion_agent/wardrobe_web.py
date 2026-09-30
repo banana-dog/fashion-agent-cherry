@@ -147,22 +147,27 @@ def list_wardrobe(
     )
 
 
-def add_wardrobe_item(
-    handler,
+def add_item_from_upload(
     user_id: str,
+    data: bytes,
+    suffix: str,
+    *,
+    category: str = "unknown",
+    note: str = "",
     wardrobe: Wardrobe | None = None,
-) -> None:
+) -> tuple[object, str | None]:
+    """Store a photographed garment and read it, returning the item.
+
+    A client who sends a photo in the chat reaches the same place as one who
+    fills in the wardrobe form, so the work lives here rather than inside the
+    request handler.
+    """
     wardrobe = wardrobe or get_wardrobe()
 
-    try:
-        form = read_upload(handler)
-        data, suffix = read_photo(form)
-    except (MultipartError, ValueError) as error:
-        send_json(handler, HTTPStatus.BAD_REQUEST, {"error": str(error)})
-        return
-
-    category = (form.text("category") or "unknown").strip()
-    note = form.text("note")
+    # Both fields arrive absent more often than present: a photo sent in the
+    # chat carries neither, and a form may leave the note empty.
+    category = (category or "unknown").strip()
+    note = (note or "").strip()
     image_path = wardrobe.store_image(user_id, data, suffix)
 
     vision = get_vision_client()
@@ -186,7 +191,7 @@ def add_wardrobe_item(
         name=(
             recognition.name
             if recognition and recognition.name
-            else (form.text("name") or "Новая вещь")
+            else (note or "Новая вещь")
         ),
         category=(
             recognition.category
@@ -206,13 +211,39 @@ def add_wardrobe_item(
         unknown=recognition.unknown if recognition else [],
     )
 
+    return item, warning
+
+
+def add_wardrobe_item(
+    handler,
+    user_id: str,
+    wardrobe: Wardrobe | None = None,
+) -> None:
+    wardrobe = wardrobe or get_wardrobe()
+
+    try:
+        form = read_upload(handler)
+        data, suffix = read_photo(form)
+    except (MultipartError, ValueError) as error:
+        send_json(handler, HTTPStatus.BAD_REQUEST, {"error": str(error)})
+        return
+
+    item, warning = add_item_from_upload(
+        user_id,
+        data,
+        suffix,
+        category=(form.text("category") or "unknown").strip(),
+        note=form.text("note"),
+        wardrobe=wardrobe,
+    )
+
     send_json(
         handler,
         HTTPStatus.CREATED,
         {
             "item": serialise_item(item),
             "warning": warning,
-            "needs_confirmation": recognition is not None,
+            "needs_confirmation": item.recognised,
         },
     )
 

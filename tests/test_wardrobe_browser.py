@@ -223,3 +223,58 @@ def test_multipart_helper_still_agrees_with_the_browser_format():
 
     assert form.text("category") == "top"
     assert form.file("photo").data == b"binary"
+
+
+def test_a_photo_sent_in_chat_lands_in_the_wardrobe(browser_page, tmp_path):
+    """The point of attaching a photo: nothing else to fill in.
+
+    A category dropdown is a question about something only a model can see, so
+    the photo itself has to be enough to create the item.
+    """
+    browser_page.evaluate("document.getElementById('wardrobe').hidden = false")
+    path = tmp_path / "skirt.jpg"
+    path.write_bytes(jpeg())
+
+    browser_page.locator("#chatPhoto").set_input_files(str(path))
+    browser_page.wait_for_selector("#chatAttachment img")
+    browser_page.locator("#chatPhotoButton").wait_for()
+
+    browser_page.locator("#chatForm").evaluate("form => form.requestSubmit()")
+    browser_page.wait_for_selector(".wardrobe-card", timeout=45000)
+
+    assert browser_page.locator(".wardrobe-card").count() == 1
+    # The tab switched to Вещи, so the thing that was just added is on screen.
+    assert browser_page.is_visible(".wardrobe-card")
+    assert not browser_page.is_visible("#chatAttachment")
+
+    reply = browser_page.inner_text("#messages")
+    assert "в гардероб" in reply
+
+
+def test_a_photo_needs_no_words_to_be_sent(browser_page, tmp_path):
+    """Empty text plus a photo is a complete message, not a half-typed one."""
+    browser_page.evaluate("document.getElementById('wardrobe').hidden = false")
+    path = tmp_path / "jacket.jpg"
+    path.write_bytes(jpeg())
+
+    assert browser_page.input_value("#prompt").strip() == ""
+    browser_page.locator("#chatPhoto").set_input_files(str(path))
+    browser_page.locator("#chatForm").evaluate("form => form.requestSubmit()")
+
+    browser_page.wait_for_selector(".wardrobe-card", timeout=45000)
+    assert browser_page.locator(".wardrobe-card").count() == 1
+
+
+def test_a_thrown_away_photo_is_not_sent(browser_page, tmp_path):
+    browser_page.evaluate("document.getElementById('wardrobe').hidden = false")
+    path = tmp_path / "boots.jpg"
+    path.write_bytes(jpeg())
+
+    browser_page.locator("#chatPhoto").set_input_files(str(path))
+    browser_page.wait_for_selector("#chatAttachment img")
+    browser_page.click("#chatAttachmentDrop")
+
+    browser_page.wait_for_selector("#chatAttachment", state="hidden")
+    browser_page.wait_for_timeout(500)
+
+    assert browser_page.locator(".wardrobe-card").count() == 0
